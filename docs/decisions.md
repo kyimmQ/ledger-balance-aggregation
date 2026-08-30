@@ -161,4 +161,6 @@ Expected configuration includes:
 - allowed frontend origin; and
 - optional ingestion concurrency and batch size.
 
+For local development, backend settings are loaded from `backend/.env`. Public frontend configuration is loaded separately from `frontend/.env.local`; it must contain only browser-safe `VITE_*` values. Tracked templates live beside them as `backend/.env.example` and `frontend/.env.example`.
+
 Do not store secrets in source control.
