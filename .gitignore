@@ -1,0 +1,25 @@
+# Local environment
+.env
+backend/.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Frontend (created in Phase 1.3)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store

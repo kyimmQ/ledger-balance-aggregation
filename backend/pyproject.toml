@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ledger-balance-aggregation"
+version = "0.1.0"
+description = "Concurrent multi-currency ledger balance aggregation"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic>=1.14,<2",
+    "asyncpg>=0.30,<1",
+    "fastapi>=0.115,<1",
+    "pydantic-settings>=2.7,<3",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "uvicorn[standard]>=0.34,<1",
+]
+
+[project.scripts]
+ledger-ingest = "ledger_balance.ingestion.cli:main"
+ledger-serve = "ledger_balance.api.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1",
+    "mypy>=1.14,<2",
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.25,<1",
+    "ruff>=0.9,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+cache_dir = ".pytest_cache"
+
+[tool.ruff]
+cache-dir = ".ruff_cache"
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["ledger_balance"]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+cache_dir = "$MYPY_CONFIG_FILE_DIR/.mypy_cache"
