@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from ledger_balance.domain.models import (
     AccountId,
     CurrencyCode,
@@ -132,3 +133,14 @@ def test_negative_balances_and_totals_are_kept() -> None:
     assert by_id[100] == Decimal("-10.00")
     assert by_id[200] == Decimal("-5.50")
     assert result.total_usd == Decimal("-15.50")
+
+
+def test_accumulated_balance_that_exceeds_numeric_38_18_is_rejected() -> None:
+    with pytest.raises(ValueError, match="balance_usd does not fit NUMERIC\\(38,18\\)"):
+        reduce_transactions(
+            [
+                make_transaction(100, "acct100", "9" * 20, "0"),
+                make_transaction(100, "acct100", "1", "0"),
+            ],
+            usd_rate_book(),
+        )

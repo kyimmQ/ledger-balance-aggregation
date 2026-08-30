@@ -77,7 +77,7 @@ At the start of each run, clear tables in foreign-key-safe order:
 2. `exchange_rates`;
 3. `currencies`.
 
-Then insert currencies and rates and apply transaction deltas directly to `account_balances`. The implementation assumes only one ingestion process runs at a time.
+Then insert currencies and rates and apply transaction deltas directly to `account_balances`. Currency rows are every distinct rate-file code plus USD; USD is always inserted even when the rate file has no USD. Rate rows come only from the rate file — ingestion does not invent a USD rate. The implementation assumes only one ingestion process runs at a time.
 
 The API may read during this process. Every SQL statement observes PostgreSQL's committed state at the start of that statement, but separate requests may see balances change as more transaction writes commit. No stable whole-import view is promised.
 
@@ -104,7 +104,7 @@ PostgreSQL serializes conflicting changes to the same row, preventing lost incre
 
 ## Required invariants
 
-- `currencies` is the supported-currency source of truth.
+- `currencies` is the supported-currency source of truth and always includes USD after rate-book insert.
 - Every rate references a supported currency.
 - Each `(currency, date)` has at most one rate.
 - Every rate is positive.

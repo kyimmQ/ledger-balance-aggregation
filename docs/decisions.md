@@ -125,7 +125,8 @@ The latest date is derived from persisted `exchange_rates`; it is not duplicated
 
 `currencies` is the authoritative set of supported API currency codes in the committed live dataset.
 
-- Ingestion inserts one currency row for every distinct currency in the rate file.
+- Ingestion inserts every distinct currency from the rate file and always inserts USD.
+- USD still bypasses FX; a USD rate row is not required when the rate file has none, and ingestion does not invent one.
 - `exchange_rates` references `currencies` through a foreign key.
 - A supported non-USD currency must have at least one persisted positive rate.
 - Currency codes are stored uppercase.
