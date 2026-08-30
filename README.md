@@ -4,12 +4,13 @@ A Python/FastAPI, PostgreSQL, and React implementation of the ledger-balance agg
 
 ## Status
 
-Phase 1.1 establishes Python packaging, configuration, entry-point separation, and backend quality tooling. Database connectivity, FastAPI, migrations, and React follow in Phase 1.2 and 1.3.
+Phase 1.2 establishes PostgreSQL connectivity, FastAPI health endpoints, and database migrations. Ledger business behavior and React follow in later phases.
 
 ## Prerequisites
 
 - Python 3.12
 - [uv](https://docs.astral.sh/uv/)
+- Docker with Docker Compose
 
 ## Install
 
@@ -30,14 +31,33 @@ uv lock --project backend --check
 make check-backend
 ```
 
-## Separate process placeholders
+## PostgreSQL
+
+```bash
+make db-up
+make migrate
+```
+
+## Separate processes
+
+Check database connectivity and exit:
 
 ```bash
 make ingest
+```
+
+Start FastAPI separately:
+
+```bash
 make api
 ```
 
-Their database and serving behavior is added in later phases.
+Foundation endpoints:
+
+```text
+GET http://localhost:8000/health/live
+GET http://localhost:8000/health/ready
+```
 
 ## Documentation
 
