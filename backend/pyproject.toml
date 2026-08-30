@@ -37,6 +37,9 @@ where = ["src"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 cache_dir = ".pytest_cache"
+markers = [
+    "integration: destructive tests requiring a migrated PostgreSQL database",
+]
 
 [tool.ruff]
 cache-dir = ".ruff_cache"
