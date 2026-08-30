@@ -1,6 +1,9 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import asyncpg  # type: ignore[import-untyped]
+from asyncpg.pool import PoolConnectionProxy  # type: ignore[import-untyped]
 
 from ledger_balance.config import Settings
 
@@ -27,10 +30,15 @@ class Database:
         await self._pool.close()
         self._pool = None
 
-    async def fetch_value(self, query: str, *args: object) -> Any:
+    @asynccontextmanager
+    async def connection(self) -> AsyncGenerator[PoolConnectionProxy, None]:
         if self._pool is None:
             raise RuntimeError("Database pool is not connected")
         async with self._pool.acquire() as connection:
+            yield connection
+
+    async def fetch_value(self, query: str, *args: object) -> Any:
+        async with self.connection() as connection:
             return await connection.fetchval(query, *args)
 
     async def ping(self) -> bool:
