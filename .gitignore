@@ -31,3 +31,6 @@ frontend/coverage/
 .idea/
 .vscode/
 .DS_Store
+
+# Generated synthetic data
+backend/fixtures/generated/

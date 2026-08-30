@@ -60,6 +60,19 @@ GET http://localhost:8000/health/ready
 
 `/health/live` reports that the API process is running. `/health/ready` also verifies PostgreSQL connectivity.
 
+## Generate deterministic synthetic data
+
+```bash
+make fixtures
+make fixtures-catalog
+```
+
+`make fixtures` writes the assignment-sized mixed file under `backend/fixtures/generated/baseline/`. `make fixtures-catalog` also writes the contention, arithmetic, FX, and size variants used in later tests. Safe to rerun; directories are overwritten and gitignored.
+
+```bash
+uv run --project backend --locked ledger-generate-fixtures --help
+```
+
 ## Quality checks
 
 Run all backend and frontend format, lint, type, test, and build gates:

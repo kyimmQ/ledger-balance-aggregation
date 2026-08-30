@@ -1,7 +1,7 @@
 UV := uv
 UV_PROJECT := --project backend
 
-.PHONY: install install-backend install-frontend lock db-up db-down migrate ingest api frontend test test-backend test-frontend lint format typecheck build check
+.PHONY: install install-backend install-frontend lock db-up db-down migrate ingest api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
 
 install: install-backend install-frontend
 
@@ -22,6 +22,33 @@ api:
 
 frontend:
 	npm --prefix frontend run dev
+
+fixtures:
+	$(UV) run $(UV_PROJECT) --locked ledger-generate-fixtures --output-dir backend/fixtures/generated/baseline
+
+GENERATE := $(UV) run $(UV_PROJECT) --locked ledger-generate-fixtures
+GEN := backend/fixtures/generated
+
+fixtures-catalog: fixtures
+	$(GENERATE) --output-dir $(GEN)/hotspot --rows 50000 --accounts 900 --account-distribution hotspot --hot-account-ratio 1.0
+	$(GENERATE) --output-dir $(GEN)/minimal-accounts --rows 50000 --accounts 5
+	$(GENERATE) --output-dir $(GEN)/medium-accounts --rows 50000 --accounts 200
+	$(GENERATE) --output-dir $(GEN)/one-per-account --rows 900 --accounts 900
+	$(GENERATE) --output-dir $(GEN)/pareto --rows 50000 --accounts 900 --account-distribution pareto
+	$(GENERATE) --output-dir $(GEN)/clustered --rows 50000 --order by-account
+	$(GENERATE) --output-dir $(GEN)/credit-only --entry-mode credit-only --rows 2000
+	$(GENERATE) --output-dir $(GEN)/debit-only --entry-mode debit-only --rows 2000
+	$(GENERATE) --output-dir $(GEN)/dual-entry --dual-entry-ratio 1 --rows 2000
+	$(GENERATE) --output-dir $(GEN)/zero-delta --zero-delta-ratio 1 --rows 2000
+	$(GENERATE) --output-dir $(GEN)/cancel-pairs --entry-mode cancel-pairs --rows 2000
+	$(GENERATE) --output-dir $(GEN)/magnitudes --min-amount 0.01 --max-amount 999999999.99 --rows 2000
+	$(GENERATE) --output-dir $(GEN)/float-traps --trap-amount-ratio 1 --currencies USD,SGD --rows 2000
+	$(GENERATE) --output-dir $(GEN)/usd-only --currencies USD --rows 2000
+	$(GENERATE) --output-dir $(GEN)/eur-only --currencies EUR --rows 2000
+	$(GENERATE) --output-dir $(GEN)/single-account-fx --accounts 1 --rows 2000
+	$(GENERATE) --output-dir $(GEN)/single-date --dates 1 --rows 2000
+	$(GENERATE) --output-dir $(GEN)/micro --rows 10 --accounts 10
+	$(GENERATE) --output-dir $(GEN)/empty --rows 0 --accounts 1
 
 test: test-backend test-frontend
 
