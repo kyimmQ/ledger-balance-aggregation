@@ -8,6 +8,7 @@ import pytest
 from ledger_balance.api.query_models import AccountBalanceSnapshot, TotalBalanceSnapshot
 from ledger_balance.api.repository import (
     ACCOUNT_BALANCE_SNAPSHOT_SQL,
+    SUPPORTED_CURRENCIES_SQL,
     TOTAL_BALANCE_SNAPSHOT_SQL,
     BalanceReadRepository,
 )
@@ -114,6 +115,16 @@ async def test_total_snapshot_uses_one_statement_and_preserves_exact_total() -> 
     assert result == TotalBalanceSnapshot(True, True, total, None, None)
     assert result.total_usd is total
     assert connection.calls == [(TOTAL_BALANCE_SNAPSHOT_SQL, "USD")]
+    assert database.events == ["acquire", "release"]
+
+
+async def test_supported_currencies_preserve_database_order() -> None:
+    repository, connection, database = repository_with({"currencies": ["USD", "EUR", "SGD"]})
+
+    result = await repository.supported_currencies()
+
+    assert result == (CurrencyCode("USD"), CurrencyCode("EUR"), CurrencyCode("SGD"))
+    assert connection.calls == [(SUPPORTED_CURRENCIES_SQL,)]
     assert database.events == ["acquire", "release"]
 
 

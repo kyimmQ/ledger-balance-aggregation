@@ -43,6 +43,10 @@ class FakeRepository:
         )
         self.account_error: Exception | None = None
         self.total_error: Exception | None = None
+        self.currencies_result: tuple[CurrencyCode, ...] = (
+            CurrencyCode("USD"),
+            CurrencyCode("EUR"),
+        )
 
     async def account_snapshot(
         self, account_id: AccountId, currency: CurrencyCode
@@ -57,6 +61,9 @@ class FakeRepository:
         if self.total_error is not None:
             raise self.total_error
         return self.total_result
+
+    async def supported_currencies(self) -> tuple[CurrencyCode, ...]:
+        return self.currencies_result
 
 
 def client_with(
@@ -115,8 +122,8 @@ def test_omitted_currency_defaults_to_usd_and_request_id_is_echoed() -> None:
 @pytest.mark.parametrize(
     ("path", "code"),
     [
-        ("/api/accounts/99/balance", "INVALID_ACCOUNT_ID"),
         ("/api/accounts/nope/balance", "INVALID_ACCOUNT_ID"),
+        ("/api/accounts/2147483648/balance", "INVALID_ACCOUNT_ID"),
         ("/api/balances/total?currency=US$", "INVALID_CURRENCY"),
     ],
 )
@@ -132,7 +139,7 @@ def test_missing_account_and_unsupported_currency_are_distinct() -> None:
     repository = FakeRepository()
     repository.account_result = AccountBalanceSnapshot(True, True, None, None, None)
     with client_with(repository)[0] as client:
-        missing = client.get("/api/accounts/999/balance")
+        missing = client.get("/api/accounts/99/balance")
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "ACCOUNT_NOT_FOUND"
 
@@ -143,6 +150,21 @@ def test_missing_account_and_unsupported_currency_are_distinct() -> None:
         unsupported = client.get("/api/balances/total?currency=EUR")
     assert unsupported.status_code == 400
     assert unsupported.json()["error"]["code"] == "UNSUPPORTED_CURRENCY"
+
+
+def test_supported_currencies_come_from_repository() -> None:
+    repository = FakeRepository()
+    repository.currencies_result = (
+        CurrencyCode("USD"),
+        CurrencyCode("EUR"),
+        CurrencyCode("SGD"),
+    )
+
+    with client_with(repository)[0] as client:
+        response = client.get("/api/currencies")
+
+    assert response.status_code == 200
+    assert response.json() == {"currencies": ["USD", "EUR", "SGD"]}
 
 
 def test_empty_dataset_and_missing_rate_are_explicit_failures() -> None:

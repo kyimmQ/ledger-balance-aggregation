@@ -4,7 +4,11 @@ from typing import Protocol, cast
 import asyncpg  # type: ignore[import-untyped]
 from fastapi import APIRouter, Depends, Query, Request
 
-from ledger_balance.api.contracts import AccountBalanceResponse, TotalBalanceResponse
+from ledger_balance.api.contracts import (
+    AccountBalanceResponse,
+    SupportedCurrenciesResponse,
+    TotalBalanceResponse,
+)
 from ledger_balance.api.conversion import convert_usd, format_money
 from ledger_balance.api.errors import (
     AccountNotFoundError,
@@ -24,6 +28,7 @@ from ledger_balance.domain.models import AccountId, CurrencyCode
 
 _CURRENCY_PATTERN = re.compile(r"^[A-Z]{3,8}$")
 _ACCOUNT_PATTERN = re.compile(r"^[0-9]+$")
+_POSTGRES_INTEGER_MAX = 2_147_483_647
 
 
 class ReadRepository(Protocol):
@@ -32,6 +37,8 @@ class ReadRepository(Protocol):
     ) -> AccountBalanceSnapshot: ...
 
     async def total_snapshot(self, currency: CurrencyCode) -> TotalBalanceSnapshot: ...
+
+    async def supported_currencies(self) -> tuple[CurrencyCode, ...]: ...
 
 
 router = APIRouter(
@@ -60,7 +67,7 @@ def parse_account_id(raw: str) -> AccountId:
         value = int(raw)
     except ValueError as error:
         raise InvalidAccountIdError(raw) from error
-    if not 100 <= value <= 999:
+    if value > _POSTGRES_INTEGER_MAX:
         raise InvalidAccountIdError(raw)
     return AccountId(value)
 
@@ -98,6 +105,23 @@ async def _total_snapshot(
         raise DatabaseTimeoutError() from error
     except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as error:
         raise DatabaseUnavailableError() from error
+
+
+async def _supported_currencies(repository: ReadRepository) -> tuple[CurrencyCode, ...]:
+    try:
+        return await repository.supported_currencies()
+    except TimeoutError as error:
+        raise DatabaseTimeoutError() from error
+    except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as error:
+        raise DatabaseUnavailableError() from error
+
+
+@router.get("/currencies", response_model=SupportedCurrenciesResponse)
+async def supported_currencies(
+    repository: ReadRepository = Depends(repository_from_request),  # noqa: B008
+) -> SupportedCurrenciesResponse:
+    currencies = await _supported_currencies(repository)
+    return SupportedCurrenciesResponse(currencies=[str(code) for code in currencies])
 
 
 @router.get(

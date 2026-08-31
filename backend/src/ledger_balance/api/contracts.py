@@ -21,6 +21,12 @@ class TotalBalanceResponse(BaseModel):
     valuation_date: date | None = Field(alias="valuationDate")
 
 
+class SupportedCurrenciesResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    currencies: list[str]
+
+
 class ErrorDetail(BaseModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 

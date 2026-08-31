@@ -66,6 +66,14 @@ CROSS JOIN currency_state
 LEFT JOIN latest_rate ON TRUE
 """
 
+SUPPORTED_CURRENCIES_SQL = """
+SELECT COALESCE(
+    array_agg(code ORDER BY (code <> 'USD'), code),
+    ARRAY[]::varchar[]
+) AS currencies
+FROM currencies
+"""
+
 
 class BalanceReadRepository:
     def __init__(self, database: Database, query_timeout_seconds: float | None = None) -> None:
@@ -94,6 +102,20 @@ class BalanceReadRepository:
                 timeout=self._query_timeout_seconds,
             )
         return _total_snapshot(row)
+
+    async def supported_currencies(self) -> tuple[CurrencyCode, ...]:
+        async with self._database.connection() as connection:
+            row = await connection.fetchrow(
+                SUPPORTED_CURRENCIES_SQL,
+                timeout=self._query_timeout_seconds,
+            )
+        values = _required_row(row)
+        raw_currencies = _field(values, "currencies")
+        if not isinstance(raw_currencies, list) or not all(
+            isinstance(code, str) for code in raw_currencies
+        ):
+            raise RuntimeError("currency query returned invalid data")
+        return tuple(CurrencyCode(code) for code in raw_currencies)
 
 
 def _account_snapshot(row: Mapping[str, object] | None) -> AccountBalanceSnapshot:

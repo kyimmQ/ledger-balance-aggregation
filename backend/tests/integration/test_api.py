@@ -89,10 +89,16 @@ async def test_baseline_api_reads_are_persisted_restart_safe_and_progressive(
     await ingestion_database.disconnect()
 
     with TestClient(create_app(Settings(), database=Database(Settings()))) as client:
+        currencies = client.get("/api/currencies")
         account_usd = client.get("/api/accounts/100/balance")
         account_eur = client.get("/api/accounts/100/balance?currency= eur ")
         total_eur = client.get("/api/balances/total?currency=EUR")
 
+        expected_currencies = sorted(
+            str(code) for code in rates.currencies if code != CurrencyCode("USD")
+        )
+        assert currencies.status_code == 200
+        assert currencies.json() == {"currencies": ["USD", *expected_currencies]}
         assert account_usd.status_code == 200
         assert account_usd.json() == {
             "accountId": 100,
