@@ -100,14 +100,31 @@ snapshot is promised.
 
 ## Read API
 
+### Supported currencies
+
+```http
+GET /api/currencies
+```
+
+The response is populated from the `currencies` table, with USD first and the
+remaining codes in alphabetical order:
+
+```json
+{
+  "currencies": ["USD", "EUR", "GBP"]
+}
+```
+
 ### Account balance
 
 ```http
 GET /api/accounts/{accountId}/balance?currency={currency}
 ```
 
-`accountId` is required and must be 100–999. `currency` is optional and
-defaults to USD; input is trimmed and uppercased.
+`accountId` is required and must be a decimal integer accepted by PostgreSQL's
+`INTEGER` type. An ID that is not present in the ingested 100–999 dataset returns
+`ACCOUNT_NOT_FOUND`. `currency` is optional and defaults to USD; input is
+trimmed and uppercased.
 
 Example:
 
@@ -174,14 +191,14 @@ bounded process-local guard, not a distributed security boundary.
 
 The React application provides:
 
-- a currency selector for USD, EUR, and GBP;
+- currency selectors populated by `GET /api/currencies`;
 - total-balance display;
-- account lookup for IDs 100–999;
+- account lookup without a client-side ID-range assumption;
 - Enter-key and button submission;
 - loading and refreshing states;
 - retry actions for recoverable failures;
 - empty-dataset, not-found, zero, negative, and service-error states; and
-- visible valuation dates for non-USD responses.
+- currency codes shown alongside returned balance values.
 
 The browser displays API-provided money strings and performs no authoritative
 financial arithmetic.

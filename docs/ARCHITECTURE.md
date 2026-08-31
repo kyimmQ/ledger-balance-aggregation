@@ -104,11 +104,12 @@ configured pool maximum.
 
 ## Read path
 
-`backend/src/ledger_balance/api/repository.py` uses one SQL statement for each
-account or total query. The statement obtains the stored USD amount and the
-requested currency's newest rate from the same statement snapshot. USD bypasses
-FX lookup. Non-USD conversion is exact Decimal division in Python, followed by
-one round-half-even presentation quantization.
+`backend/src/ledger_balance/api/repository.py` reads selector options directly
+from `currencies` and uses one SQL statement for each account or total query.
+Balance statements obtain the stored USD amount and the requested currency's
+newest rate from the same statement snapshot. USD bypasses FX lookup. Non-USD
+conversion is exact Decimal division in Python, followed by one round-half-even
+presentation quantization.
 
 Each request sees committed data available when its query starts. Since
 ingestion updates live tables directly, separate requests may observe different
