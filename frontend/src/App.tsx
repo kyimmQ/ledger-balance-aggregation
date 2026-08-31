@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import AccountBalanceCard from './components/AccountBalanceCard'
 import AccountLookupForm from './components/AccountLookupForm'
@@ -7,6 +7,8 @@ import FeedbackMessage from './components/FeedbackMessage'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import TotalBalanceCard from './components/TotalBalanceCard'
+import type { AsyncState } from './api/state'
+import type { AccountBalance, TotalBalance } from './api/types'
 import { getLedgerQueryError, useLedgerQueries } from './hooks/useLedgerQueries'
 import './App.css'
 
@@ -23,6 +25,8 @@ function App() {
     accountState,
     lookupAccount,
     changeCurrency,
+    retryTotal,
+    retryAccount,
   } = useLedgerQueries()
   const [accountId, setAccountId] = useState('')
   const [validationMessage, setValidationMessage] = useState<string>()
@@ -52,7 +56,12 @@ function App() {
   const accountError = accountState.status === 'error'
     ? getLedgerQueryError(accountState.error)
     : undefined
-  const accountPending = accountState.status === 'loading'
+  const totalPending = totalState.status === 'loading' || totalState.status === 'refreshing'
+  const accountPending = accountState.status === 'loading' || accountState.status === 'refreshing'
+
+  useEffect(() => {
+    document.title = 'Ledger balance dashboard'
+  }, [])
 
   return (
     <div className="app-shell">
@@ -71,11 +80,13 @@ function App() {
           <TotalBalanceCard
             currency={currency}
             state={getBalanceDisplayState(totalState)}
-            total={totalState.status === 'success' ? totalState.data.total : undefined}
+            total={hasTotalData(totalState) ? totalState.data.total : undefined}
             valuationDate={
-              totalState.status === 'success' ? totalState.data.valuationDate : undefined
+              hasTotalData(totalState) ? totalState.data.valuationDate : undefined
             }
             message={totalError?.message}
+            pending={totalPending}
+            onRetry={retryTotal}
           />
 
           <section className="card lookup-card" aria-labelledby="lookup-heading">
@@ -103,24 +114,27 @@ function App() {
           <AccountBalanceCard
             currency={currency}
             state={getBalanceDisplayState(accountState)}
-            accountId={accountState.status === 'success' ? accountState.data.accountId : undefined}
-            accountName={accountState.status === 'success' ? accountState.data.name : undefined}
-            balance={accountState.status === 'success' ? accountState.data.balance : undefined}
+            accountId={hasAccountData(accountState) ? accountState.data.accountId : undefined}
+            accountName={hasAccountData(accountState) ? accountState.data.name : undefined}
+            balance={hasAccountData(accountState) ? accountState.data.balance : undefined}
             valuationDate={
-              accountState.status === 'success' ? accountState.data.valuationDate : undefined
+              hasAccountData(accountState) ? accountState.data.valuationDate : undefined
             }
             message={accountError?.message}
+            pending={accountPending}
+            onRetry={retryAccount}
           />
         </div>
 
         <FeedbackMessage
           tone={accountError || totalError ? 'error' : totalState.status === 'success' ? 'success' : 'info'}
           message={getFeedbackMessage({
-            accountError,
-            totalError,
+          accountError,
+          totalError,
             accountState,
             totalState,
           })}
+          announce={!totalPending && !accountPending}
         />
       </main>
       <Footer />
@@ -134,8 +148,8 @@ function isValidAccountId(accountId: string): boolean {
 }
 
 function getBalanceDisplayState(
-  state: { status: 'idle' | 'loading' | 'success' } | { status: 'error'; error: Error },
-): 'idle' | 'loading' | 'success' | 'not-found' | 'empty' | 'error' {
+  state: AsyncState<unknown>,
+): 'idle' | 'loading' | 'refreshing' | 'success' | 'not-found' | 'empty' | 'error' {
   if (state.status !== 'error') {
     return state.status
   }
@@ -148,6 +162,18 @@ function getBalanceDisplayState(
     return 'empty'
   }
   return 'error'
+}
+
+function hasTotalData(
+  state: AsyncState<TotalBalance>,
+): state is { status: 'refreshing' | 'success'; data: TotalBalance } {
+  return state.status === 'success' || state.status === 'refreshing'
+}
+
+function hasAccountData(
+  state: AsyncState<AccountBalance>,
+): state is { status: 'refreshing' | 'success'; data: AccountBalance } {
+  return state.status === 'success' || state.status === 'refreshing'
 }
 
 function getFeedbackMessage({
@@ -169,6 +195,9 @@ function getFeedbackMessage({
   }
   if (accountState.status === 'loading' || totalState.status === 'loading') {
     return 'Loading the latest ledger balances…'
+  }
+  if (accountState.status === 'refreshing' || totalState.status === 'refreshing') {
+    return 'Refreshing the latest ledger balances…'
   }
   if (accountState.status === 'success') {
     return 'Account balance loaded from the ledger.'

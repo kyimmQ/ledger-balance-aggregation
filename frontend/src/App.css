@@ -211,6 +211,13 @@ button:disabled {
   color: var(--brand-dark);
 }
 
+.refreshing-message {
+  margin-top: 1rem;
+  margin-bottom: -2rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .balance-result {
   margin-top: 2.75rem;
 }
@@ -224,6 +231,42 @@ button:disabled {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.05em;
+}
+
+.money-negative {
+  color: var(--error);
+}
+
+.money-zero {
+  color: var(--muted-strong);
+}
+
+.balance-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.balance-context::before {
+  display: inline-block;
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.balance-context-negative {
+  color: var(--error);
+}
+
+.balance-context-zero {
+  color: var(--muted-strong);
 }
 
 .valuation-date,
@@ -309,6 +352,43 @@ button:disabled {
   opacity: 0.6;
 }
 
+.error-content {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.error-content .empty-message {
+  margin-top: 3.5rem;
+}
+
+.retry-button {
+  min-height: 2.75rem;
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+  border: 1px solid #a7bde9;
+}
+
+.retry-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--brand-dark);
+}
+
+.refresh-button {
+  min-height: 2.4rem;
+  margin-top: 1.25rem;
+  padding: 0.45rem 0.75rem;
+  color: var(--brand-dark);
+  background: transparent;
+  border: 1px solid #a7bde9;
+  font-size: 0.82rem;
+}
+
+.refresh-button:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--brand-dark);
+}
+
 .lookup-card > .field-group {
   margin-top: 1.25rem;
 }
@@ -381,6 +461,23 @@ button:disabled {
 
   .card {
     padding: 1rem;
+  }
+
+  .card-heading-row {
+    gap: 0.6rem;
+  }
+
+  .currency-chip {
+    flex: 0 0 auto;
+  }
+
+  .money-value {
+    font-size: clamp(1.55rem, 12vw, 2.35rem);
+  }
+
+  .feedback {
+    flex-direction: column;
+    gap: 0.35rem;
   }
 }
 

@@ -1,6 +1,7 @@
 export type AsyncState<T> =
   | { status: 'idle' }
   | { status: 'loading' }
+  | { status: 'refreshing'; data: T }
   | { status: 'success'; data: T }
   | { status: 'error'; error: Error }
 
@@ -24,6 +25,17 @@ export function isIdleState<T>(state: AsyncState<T>): state is { status: 'idle' 
 
 export function isLoadingState<T>(state: AsyncState<T>): state is { status: 'loading' } {
   return state.status === 'loading'
+}
+
+export const refreshingState = <T>(data: T): AsyncState<T> => ({
+  status: 'refreshing',
+  data,
+})
+
+export function isRefreshingState<T>(
+  state: AsyncState<T>,
+): state is { status: 'refreshing'; data: T } {
+  return state.status === 'refreshing'
 }
 
 export function isSuccessState<T>(

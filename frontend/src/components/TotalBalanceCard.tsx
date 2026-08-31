@@ -3,6 +3,7 @@ import type { CurrencyCode } from './CurrencySelector'
 export type BalanceDisplayState =
   | 'idle'
   | 'loading'
+  | 'refreshing'
   | 'success'
   | 'not-found'
   | 'empty'
@@ -14,6 +15,8 @@ export interface TotalBalanceCardProps {
   valuationDate?: string | null
   state: BalanceDisplayState
   message?: string
+  pending?: boolean
+  onRetry?: () => void
 }
 
 function TotalBalanceCard({
@@ -22,9 +25,18 @@ function TotalBalanceCard({
   valuationDate,
   state,
   message,
+  pending = state === 'loading' || state === 'refreshing',
+  onRetry,
 }: TotalBalanceCardProps) {
+  const hasValue = state === 'success' || state === 'refreshing'
+  const valueTone = total === undefined ? 'normal' : getMoneyTone(total)
+
   return (
-    <section className={`card total-card state-${state}`} aria-labelledby="total-balance-heading">
+    <section
+      className={`card total-card state-${state}`}
+      aria-labelledby="total-balance-heading"
+      aria-busy={pending}
+    >
       <div className="card-heading-row">
         <div>
           <p className="card-kicker">Portfolio view</p>
@@ -42,18 +54,42 @@ function TotalBalanceCard({
           Loading total balance…
         </p>
       )}
-      {state === 'success' && total !== undefined && (
+      {state === 'refreshing' && (
+        <p className="loading-message refreshing-message" role="status" aria-live="polite">
+          Refreshing total balance…
+        </p>
+      )}
+      {hasValue && total !== undefined && (
         <div className="balance-result">
-          <p className="money-value">{total}</p>
+          <p className={`money-value money-${valueTone}`}>
+            <span>{total}</span>
+          </p>
+          {valueTone !== 'normal' && (
+            <p className={`balance-context balance-context-${valueTone}`}>
+              {valueTone === 'zero' ? 'Zero balance' : 'Negative balance'}
+            </p>
+          )}
           {(valuationDate || currency === 'USD') && (
             <p className="valuation-date">
               {valuationDate ? `Valued ${valuationDate}` : 'Stored USD'}
             </p>
           )}
+          {(state === 'success' || state === 'refreshing') && onRetry && (
+            <button type="button" className="refresh-button" onClick={onRetry} disabled={pending}>
+              {state === 'refreshing' ? 'Refreshing total balance…' : 'Refresh total balance'}
+            </button>
+          )}
         </div>
       )}
       {(state === 'not-found' || state === 'empty' || state === 'error') && (
-        <p className="empty-message">{message ?? getDefaultMessage(state)}</p>
+        <div className="error-content" role="group" aria-label="Total balance request result">
+          <p className="empty-message">{message ?? getDefaultMessage(state)}</p>
+          {state === 'error' && onRetry && (
+            <button type="button" className="retry-button" onClick={onRetry}>
+              Retry total balance
+            </button>
+          )}
+        </div>
       )}
     </section>
   )
@@ -64,6 +100,17 @@ function getDefaultMessage(state: Exclude<BalanceDisplayState, 'idle' | 'loading
     return 'The ledger dataset is not available right now.'
   }
   return 'The total balance is not available yet.'
+}
+
+function getMoneyTone(value: string): 'normal' | 'negative' | 'zero' {
+  const trimmed = value.trim()
+  if (/^-/.test(trimmed) && !/^-0+(?:\.0+)?$/.test(trimmed)) {
+    return 'negative'
+  }
+  if (/^[+-]?0+(?:\.0+)?$/.test(trimmed)) {
+    return 'zero'
+  }
+  return 'normal'
 }
 
 export default TotalBalanceCard

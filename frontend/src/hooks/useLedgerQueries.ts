@@ -13,6 +13,7 @@ import {
   errorState,
   idleState,
   loadingState,
+  refreshingState,
   RequestSequence,
   successState,
   type AsyncState,
@@ -52,6 +53,8 @@ export interface UseLedgerQueriesResult {
   accountState: AsyncState<AccountBalance>
   lookupAccount: (accountId: string) => void
   changeCurrency: (currency: CurrencyCode) => void
+  retryTotal: () => void
+  retryAccount: () => void
 }
 
 const initialCurrency: CurrencyCode = 'USD'
@@ -73,12 +76,21 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
   const activeAccountRequest = useRef<{ accountId: string; currency: CurrencyCode } | null>(null)
   const accountLoading = useRef(false)
 
-  const loadTotal = useCallback((requestedCurrency: CurrencyCode) => {
+  const loadTotal = useCallback((requestedCurrency: CurrencyCode, retainCurrent = false) => {
     totalController.current?.abort()
     const controller = new AbortController()
     totalController.current = controller
     const token = totalSequence.current.next()
-    setTotalState(loadingState())
+    setTotalState((currentState) => {
+      if (
+        retainCurrent &&
+        (currentState.status === 'success' || currentState.status === 'refreshing') &&
+        currentState.data.currency === requestedCurrency
+      ) {
+        return refreshingState(currentState.data)
+      }
+      return loadingState()
+    })
 
     void fetchTotalBalance(requestedCurrency, controller.signal)
       .then((data) => {
@@ -95,7 +107,12 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
   }, [])
 
   const loadAccount = useCallback(
-    (accountId: string, requestedCurrency: CurrencyCode, force = false) => {
+    (
+      accountId: string,
+      requestedCurrency: CurrencyCode,
+      force = false,
+      retainCurrent = false,
+    ) => {
       if (
         !force &&
         accountLoading.current &&
@@ -111,7 +128,17 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
       activeAccountRequest.current = { accountId, currency: requestedCurrency }
       accountLoading.current = true
       const token = accountSequence.current.next()
-      setAccountState(loadingState())
+      setAccountState((currentState) => {
+        if (
+          retainCurrent &&
+          (currentState.status === 'success' || currentState.status === 'refreshing') &&
+          currentState.data.accountId === Number(accountId) &&
+          currentState.data.currency === requestedCurrency
+        ) {
+          return refreshingState(currentState.data)
+        }
+        return loadingState()
+      })
 
       void fetchAccountBalance(accountId, requestedCurrency, controller.signal)
         .then((data) => {
@@ -150,6 +177,16 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
     [loadAccount, loadTotal],
   )
 
+  const retryTotal = useCallback(() => {
+    loadTotal(currency, true)
+  }, [currency, loadTotal])
+
+  const retryAccount = useCallback(() => {
+    if (lastAccountId.current !== null) {
+      loadAccount(lastAccountId.current, currency, true, true)
+    }
+  }, [currency, loadAccount])
+
   useEffect(() => {
     let active = true
     const totalSequenceForCleanup = totalSequence.current
@@ -175,6 +212,8 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
     accountState,
     lookupAccount,
     changeCurrency,
+    retryTotal,
+    retryAccount,
   }
 }
 

@@ -199,4 +199,89 @@ describe('ledger dashboard workflows', () => {
     await waitFor(() => expect(screen.getByText('9.00')).toBeInTheDocument())
     expect(screen.queryByText('1.00')).not.toBeInTheDocument()
   })
+
+  it('retries only the failed total request through keyboard activation', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('temporary network failure'))
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '125.00')))
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    const retry = await screen.findByRole('button', { name: 'Retry total balance' })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Unable to reach the ledger service. Please try again.',
+    )
+    retry.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('125.00')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/balances/total?currency=USD',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it('retries only the failed account request and keeps the selected account', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '125.00')))
+      .mockRejectedValueOnce(new TypeError('temporary network failure'))
+      .mockResolvedValueOnce(mockResponse(200, account(100, 'USD', '0.00')))
+    const user = userEvent.setup()
+
+    render(<App />)
+    const input = screen.getByRole('textbox', { name: 'Account ID' })
+    await user.type(input, '100')
+    await user.click(screen.getByRole('button', { name: 'Look up balance' }))
+
+    const retry = await screen.findByRole('button', { name: 'Retry account balance' })
+    await user.click(retry)
+
+    expect(await screen.findByText('0.00')).toBeInTheDocument()
+    expect(screen.getByText('Zero balance')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('100')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/accounts/100/balance?currency=USD',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it('retains a valid total while a same-currency retry is refreshing', async () => {
+    let resolveRetry!: (response: Response) => void
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('temporary network failure'))
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '100.00')))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve }))
+    const user = userEvent.setup()
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Retry total balance' }))
+    await screen.findByText('100.00')
+    await user.click(screen.getByRole('button', { name: 'Refresh total balance' }))
+
+    expect(screen.getByText('100.00')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Refreshing total balance…')
+    expect(screen.getByRole('region', { name: 'Total balance' })).toHaveAttribute('aria-busy', 'true')
+
+    resolveRetry(mockResponse(200, total('USD', '101.00')))
+    expect(await screen.findByText('101.00')).toBeInTheDocument()
+  })
+
+  it('marks negative balances without changing the API money string', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '0.00')))
+      .mockResolvedValueOnce(mockResponse(200, account(100, 'USD', '-12.30')))
+    const user = userEvent.setup()
+
+    render(<App />)
+    await user.type(screen.getByRole('textbox', { name: 'Account ID' }), '100')
+    await user.click(screen.getByRole('button', { name: 'Look up balance' }))
+
+    expect((await screen.findByText('-12.30')).closest('p')).toHaveClass('money-negative')
+    expect(screen.getByText('Negative balance')).toBeInTheDocument()
+    expect(screen.getByText('0.00').closest('p')).toHaveClass('money-zero')
+    expect(screen.getByText('Zero balance')).toBeInTheDocument()
+  })
 })

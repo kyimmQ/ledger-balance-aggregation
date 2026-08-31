@@ -6,8 +6,10 @@ import {
   isErrorState,
   isIdleState,
   isLoadingState,
+  isRefreshingState,
   isSuccessState,
   loadingState,
+  refreshingState,
   RequestSequence,
   successState,
   type AsyncState,
@@ -17,11 +19,13 @@ describe('AsyncState', () => {
   it('represents each request state and narrows with type guards', () => {
     const idle: AsyncState<string> = idleState()
     const loading = loadingState<string>()
+    const refreshing = refreshingState('90.00')
     const success = successState('100.00')
     const failure = errorState<string>(new Error('request failed'))
 
     expect(isIdleState(idle)).toBe(true)
     expect(isLoadingState(loading)).toBe(true)
+    expect(isRefreshingState(refreshing) && refreshing.data).toBe('90.00')
     expect(isSuccessState(success) && success.data).toBe('100.00')
     expect(isErrorState(failure) && failure.error.message).toBe('request failed')
   })
