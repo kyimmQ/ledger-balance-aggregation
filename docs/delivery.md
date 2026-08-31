@@ -20,7 +20,7 @@
 - Exact decimal domain calculations.
 - CSV parsers and happy-path validation.
 - Bounded concurrent balance persistence.
-- Account and total read services.
+- [x] Account and total read services.
 
 ### Database
 
@@ -45,7 +45,7 @@
 - Parser tests.
 - PostgreSQL migration and integration tests.
 - Concurrency stress tests against a sequential decimal reference.
-- API contract tests.
+- [x] API contract tests.
 - React component and workflow tests.
 - Separate-process restart-isolation test.
 - 50,000-row performance measurement.
@@ -96,12 +96,12 @@
 
 ### API
 
-- [ ] The FastAPI server starts independently of ingestion.
-- [ ] Both required endpoints match the documented JSON contract.
-- [ ] Missing currency defaults to USD.
+- [x] The FastAPI server starts independently of ingestion.
+- [x] Both required endpoints match the documented JSON contract.
+- [x] Missing currency defaults to USD.
 - [ ] Unsupported currency and unknown account behavior match the contract.
-- [ ] Each endpoint preferably uses one SQL statement for its own balance/total and rate lookup.
-- [ ] Database/internal errors do not leak sensitive details.
+- [x] Each endpoint preferably uses one SQL statement for its own balance/total and rate lookup.
+- [x] Database/internal errors do not leak sensitive details.
 
 ### Frontend
 
@@ -118,6 +118,15 @@
 - [ ] Restart isolation is demonstrated after the ingestion process exits.
 - [ ] A clean checkout can be run using only documented commands.
 - [ ] No secrets, local implementation logs, or machine-specific paths are committed.
+
+### Phase 5 API verification
+
+- [x] Optional API-key and process-local rate-limit boundaries are covered by
+  API contract tests.
+- [x] Real PostgreSQL API integration verification is available as an opt-in
+  destructive test against the dedicated local Docker `ledger` database.
+- [ ] React, a true separate-process restart rehearsal, and final clean-checkout
+  delivery remain later gates unless independently evidenced.
 
 ## Deferred features
 

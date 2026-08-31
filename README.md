@@ -4,7 +4,7 @@ A Python/FastAPI, PostgreSQL, and React implementation of the ledger-balance agg
 
 ## Status
 
-The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema, and bounded concurrent replacement ingestion command are implemented. Balance endpoints and the product interface follow in later phases.
+The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema, bounded concurrent replacement ingestion command, and FastAPI balance API are implemented. The React product interface follows in Phase 6.
 
 ## Prerequisites
 
@@ -70,6 +70,20 @@ Start the FastAPI server on `http://localhost:8000`:
 make api
 ```
 
+The implemented read endpoints are:
+
+```text
+GET http://localhost:8000/api/accounts/100/balance
+GET http://localhost:8000/api/balances/total?currency=EUR
+```
+
+API-key protection is disabled by default for the local React flow. For a
+trusted non-browser client, set `API_KEY` (a 32-character-or-longer secret)
+only in the local ignored `backend/.env`; never put it in a frontend env file
+or browser bundle. The application rate limiter is bounded and process-local,
+not a distributed security boundary. See the [API contract](docs/api-contract.md)
+for authentication, headers, errors, CORS, and live-read behavior.
+
 Start the Vite development server on `http://localhost:5173`:
 
 ```bash
@@ -99,6 +113,25 @@ make fixtures-catalog
 ```bash
 uv run --project backend --locked ledger-generate-fixtures --help
 ```
+
+To verify the complete API against real PostgreSQL, start and migrate the
+dedicated local Docker database, verify its identity, then opt in to the
+destructive integration test:
+
+```bash
+make db-up
+make migrate
+docker compose exec -T db psql -U ledger -d ledger -c \
+  "SELECT current_database(), current_user, version();"
+DATABASE_URL=postgresql://ledger:ledger@localhost:5432/ledger \
+  LEDGER_RUN_DB_TESTS=1 uv run --project backend --locked pytest \
+  -c backend/pyproject.toml backend/tests/integration/test_api.py
+```
+
+The integration test truncates the configured `ledger` database tables. Run it
+only against this dedicated local Docker database, never shared or production
+data. API responses are not cached while ingestion changes live balances;
+`Cache-Control: no-store` is part of the contract.
 
 ## Quality checks
 
