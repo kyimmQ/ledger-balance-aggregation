@@ -6,7 +6,7 @@ This folder contains the agreed architecture and contracts for the Ledger Balanc
 
 - Backend and ingestion: Python 3 with FastAPI for the HTTP service.
 - Database: PostgreSQL as the durable source of truth.
-- Frontend: React.js, implemented in a later phase.
+- Frontend: React.js, implemented in Phase 6 as the presentation layer over the API.
 - Ingestion semantics: each run clears the live tables and rebuilds them directly.
 - Read visibility: the API may return empty, partial, or progressively updated results while ingestion is running; this is accepted for the assessment.
 - Failure: partial live data may remain; the operator fixes the cause and reruns ingestion from the beginning.
@@ -24,6 +24,21 @@ This folder contains the agreed architecture and contracts for the Ledger Balanc
 2. [Database model](data-model.md)
 3. [HTTP API contract](api-contract.md)
 4. [Deliverables and acceptance](delivery.md)
+5. [Phase 6 frontend summary](phase-06-summary.md)
+
+The Phase 6 interface is an accessible, responsive light-theme workflow with a
+typed browser client. It loads the aggregate balance, looks up an account, and
+refreshes both views when the display currency changes. Loading, retry,
+not-found, empty, zero, negative, and service-error feedback are presented in
+the relevant card; keyboard labels, focus styles, and live-region status
+announcements are part of the implementation. The client displays API money
+strings and does not perform authoritative financial arithmetic or browser
+caching.
+
+The automated frontend gates and a limited desktop/320px dev-page smoke check
+are recorded in the Phase 6 summary. A full browser/device and screen-reader
+audit, restart-isolation rehearsal, and clean-checkout delivery gate remain
+Phase 7 responsibilities.
 
 Gateway/global rate limiting, stable import snapshots, and production deployment
 remain out of scope.
@@ -54,5 +69,5 @@ USD reads return the stored USD value without FX conversion.
 ## Status
 
 These documents freeze Phase 0 decisions and record the completed Phase 5 API
-behavior. Executable implementation must remain consistent with these
-contracts unless a decision is intentionally revised and documented.
+and Phase 6 frontend behavior. Executable implementation must remain consistent
+with these contracts unless a decision is intentionally revised and documented.

@@ -4,7 +4,10 @@ A Python/FastAPI, PostgreSQL, and React implementation of the ledger-balance agg
 
 ## Status
 
-The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema, bounded concurrent replacement ingestion command, and FastAPI balance API are implemented. The React product interface follows in Phase 6.
+The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema,
+bounded concurrent replacement ingestion command, FastAPI balance API, and
+React product interface are implemented. Phase 7 still covers final delivery
+rehearsal and any remaining manual verification.
 
 ## Prerequisites
 
@@ -88,7 +91,21 @@ Start the Vite development server on `http://localhost:5173`:
 make frontend
 ```
 
-The frontend development proxy reads `VITE_API_BASE_URL` from `frontend/.env.local` and defaults to `http://localhost:8000`. Backend settings and secrets are loaded separately from `backend/.env`.
+The frontend is a responsive light-theme dashboard with a total-balance card,
+account lookup, supported-currency selector, valuation-date context, and
+distinct loading, refreshing, empty, not-found, zero, negative, and error
+states. Account IDs are checked before a request; pressing Enter and selecting
+“Look up balance” use the same path. Recoverable failures expose a retry action,
+and changing currency refreshes the total and the last account lookup.
+
+The typed client sends `GET` requests to `/api` and uses `cache: no-store` for
+financial responses. In development, Vite proxies `/api` and `/health` to the
+`VITE_API_BASE_URL` value from `frontend/.env.local` (default:
+`http://localhost:8000`). A configured base URL is public browser configuration
+and must not contain a secret. Backend settings and secrets are loaded
+separately from `backend/.env`; this assignment's API has no authentication
+requirement. The frontend renders API-provided money strings and does not
+recalculate authoritative financial values in the browser.
 
 ## Health checks
 
@@ -147,4 +164,5 @@ Individual targets include `make test`, `make lint`, `make typecheck`, and `make
 - [Architecture decisions](docs/decisions.md)
 - [Database model](docs/data-model.md)
 - [API contract](docs/api-contract.md)
+- [Phase 6 frontend summary](docs/phase-06-summary.md)
 - [Implementation plan](plan/README.md)

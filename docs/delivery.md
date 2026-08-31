@@ -31,13 +31,16 @@
 
 ### Frontend
 
-- React application.
-- Account ID lookup.
-- Supported-currency selection.
-- Account balance display.
-- Total balance display.
-- Loading, success, not-found, empty, and error states.
-- Responsive and accessible presentation.
+- [x] React application.
+- [x] Account ID lookup.
+- [x] Supported-currency selection.
+- [x] Account balance display.
+- [x] Total balance display.
+- [x] Loading, success, not-found, and error states.
+- [x] Zero and negative balance presentation.
+- [ ] Empty-dataset UI state has a dedicated frontend workflow test.
+- [ ] Responsive and accessible presentation has a full manual browser and
+      screen-reader audit.
 
 ### Verification
 
@@ -46,7 +49,7 @@
 - PostgreSQL migration and integration tests.
 - Concurrency stress tests against a sequential decimal reference.
 - [x] API contract tests.
-- React component and workflow tests.
+- [x] React component and workflow tests.
 - Separate-process restart-isolation test.
 - 50,000-row performance measurement.
 
@@ -105,15 +108,19 @@
 
 ### Frontend
 
-- [ ] Users can choose a currency and look up an account.
-- [ ] Users can view the total in the same selected currency.
-- [ ] Valuation dates are visible when conversion occurs.
-- [ ] Loading, error, not-found, zero, and negative states are clear.
-- [ ] Stale responses cannot overwrite newer selections.
+- [x] Users can choose a currency and look up an account.
+- [x] Users can view the total in the same selected currency.
+- [x] Valuation dates are visible when conversion occurs.
+- [x] Loading, error, not-found, zero, and negative states are clear.
+- [x] Stale responses cannot overwrite newer selections.
+- [ ] Full responsive browser and screen-reader behavior is manually audited.
 
 ### Delivery
 
-- [ ] All migrations, tests, linting, type checks, and builds pass.
+- [ ] All migrations, tests, linting, type checks, and builds pass (the
+      opt-in PostgreSQL integration suite remains skipped unless explicitly
+      enabled).
+- [x] Frontend lint, 22 workflow/unit tests, and the production build pass.
 - [x] Ingestion of 50,000 rows is measured and documented.
 - [ ] Restart isolation is demonstrated after the ingestion process exits.
 - [ ] A clean checkout can be run using only documented commands.
