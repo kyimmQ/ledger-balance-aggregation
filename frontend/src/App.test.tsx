@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -221,6 +221,33 @@ describe('ledger dashboard workflows', () => {
       '/api/balances/total?currency=USD',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
+  })
+
+  it('shows an empty-dataset state and retries the total request', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(503, {
+        error: {
+          code: 'DATASET_NOT_READY',
+          message: 'No balance dataset is currently available',
+          requestId: 'dataset-request-id',
+        },
+      }))
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '125.00')))
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    const totalCard = screen.getByRole('region', { name: 'Total balance' })
+    expect(await within(totalCard).findByText(
+      'The ledger dataset is not available right now. Please try again later.',
+    )).toBeInTheDocument()
+    expect(totalCard).toHaveClass('state-empty')
+    expect(screen.queryByText('125.00')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Retry total balance' }))
+
+    expect(await screen.findByText('125.00')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('retries only the failed account request and keeps the selected account', async () => {

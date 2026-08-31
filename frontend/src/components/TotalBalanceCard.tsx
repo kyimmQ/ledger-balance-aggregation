@@ -84,7 +84,7 @@ function TotalBalanceCard({
       {(state === 'not-found' || state === 'empty' || state === 'error') && (
         <div className="error-content" role="group" aria-label="Total balance request result">
           <p className="empty-message">{message ?? getDefaultMessage(state)}</p>
-          {state === 'error' && onRetry && (
+          {(state === 'empty' || state === 'error') && onRetry && (
             <button type="button" className="retry-button" onClick={onRetry}>
               Retry total balance
             </button>
