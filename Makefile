@@ -4,7 +4,7 @@ TRANSACTIONS ?= backend/fixtures/generated/baseline/transactions.csv
 RATES ?= backend/fixtures/generated/baseline/exchange_rates.csv
 BENCHMARK_CONCURRENCIES ?= 1 2 5 10
 
-.PHONY: install install-backend install-frontend lock db-up db-down migrate ingest benchmark api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
+.PHONY: install install-backend install-frontend lock check-prerequisites db-up db-down migrate ingest benchmark api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
 
 install: install-backend install-frontend
 
@@ -16,6 +16,41 @@ install-frontend:
 
 lock:
 	$(UV) lock $(UV_PROJECT)
+
+check-prerequisites:
+	@missing=0; \
+	for command_name in uv python3 node npm make; do \
+		if command -v "$$command_name" >/dev/null 2>&1; then \
+			case "$$command_name" in \
+				uv) version="$$(uv --version 2>/dev/null)" ;; \
+				python3) version="$$(python3 --version 2>&1)" ;; \
+				node) version="$$(node --version 2>&1)" ;; \
+				npm) version="npm $$(npm --version 2>&1)" ;; \
+				make) version="$$(make --version 2>/dev/null | sed -n '1p')" ;; \
+			esac; \
+			case "$$command_name:$$version" in \
+				make:*GNU\ Make*) printf 'Found %-8s %s\n' "$$command_name" "$$version" ;; \
+				make:*) printf 'ERROR: GNU Make is required, found: %s\n' "$$version" >&2; missing=1 ;; \
+				*) printf 'Found %-8s %s\n' "$$command_name" "$$version" ;; \
+			esac; \
+		else \
+			printf 'ERROR: required command not found: %s\n' "$$command_name" >&2; \
+			missing=1; \
+		fi; \
+	done; \
+	if command -v docker >/dev/null 2>&1; then \
+		if docker compose version >/dev/null 2>&1; then \
+			printf 'Found docker compose %s\n' "$$(docker compose version --short 2>/dev/null || docker compose version 2>/dev/null)"; \
+		else \
+			printf 'WARNING: Docker Compose v2 is unavailable (optional; use a compatible PostgreSQL instance instead)\n' >&2; \
+		fi; \
+	else \
+		printf 'WARNING: Docker is unavailable, so Docker Compose v2 cannot be checked (optional; use a compatible PostgreSQL instance instead)\n' >&2; \
+	fi; \
+	if [ "$$missing" -ne 0 ]; then \
+		printf 'ERROR: install the missing required tools before continuing.\n' >&2; \
+		exit 1; \
+	fi
 
 ingest:
 	$(UV) run $(UV_PROJECT) --locked ledger-ingest --transactions $(TRANSACTIONS) --rates $(RATES)

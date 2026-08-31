@@ -1,31 +1,37 @@
 # Ledger Balance Aggregation
 
-A Python/FastAPI, PostgreSQL, and React implementation of the ledger-balance aggregation assessment.
+A Python/FastAPI, PostgreSQL, and React application for ledger-balance aggregation.
 
 ## Status
 
 The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema,
 bounded concurrent replacement ingestion command, FastAPI balance API, and
-React product interface are implemented. Phase 7 still covers final delivery
-rehearsal and any remaining manual verification.
+React product interface are implemented.
 
 ## Prerequisites
 
 - Python 3.12
 - [uv](https://docs.astral.sh/uv/)
 - Node.js 22 or newer and npm
-- Docker with Docker Compose, or a compatible PostgreSQL instance
+- GNU Make
+- Docker with the Docker Compose v2 plugin, or a compatible PostgreSQL instance
 
 ## Setup
 
-Create the backend and frontend environment files, install both projects, start PostgreSQL, and apply migrations:
+Optionally verify that the required local tools are available. Docker Compose
+is optional when using a compatible PostgreSQL instance:
+
+```bash
+make check-prerequisites
+```
+
+Create the backend and frontend environment files, install both projects, and start PostgreSQL:
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
 make install
 make db-up
-make migrate
 ```
 
 `backend/uv.lock` and `frontend/package-lock.json` are committed for reproducible installs.
@@ -65,7 +71,7 @@ make benchmark TRANSACTIONS=backend/fixtures/generated/hotspot/transactions.csv 
 
 Each command replaces the configured database contents and verifies every stored
 account row and the exact total against the sequential decimal oracle. Local
-benchmark details and limitations are recorded in `docs/performance.md`.
+benchmark details and limitations are printed by the command.
 
 Start the FastAPI server on `http://localhost:8000`:
 
@@ -80,10 +86,10 @@ GET http://localhost:8000/api/accounts/100/balance
 GET http://localhost:8000/api/balances/total?currency=EUR
 ```
 
-The API has no authentication requirement for this assignment. The application
-rate limiter is bounded and process-local, not a distributed security boundary.
-See the local `docs/api-contract.md` working note for headers, errors, CORS, and
-live-read behavior.
+The API does not require authentication. The application rate limiter is
+bounded and process-local, not a distributed security boundary.
+Headers, errors, CORS, and live-read behavior are defined by the backend API
+implementation and its tests.
 
 Start the Vite development server on `http://localhost:5173`:
 
@@ -103,8 +109,8 @@ financial responses. In development, Vite proxies `/api` and `/health` to the
 `VITE_API_BASE_URL` value from `frontend/.env.local` (default:
 `http://localhost:8000`). A configured base URL is public browser configuration
 and must not contain a secret. Backend settings and secrets are loaded
-separately from `backend/.env`; this assignment's API has no authentication
-requirement. The frontend renders API-provided money strings and does not
+separately from `backend/.env`; the API does not require authentication. The
+frontend renders API-provided money strings and does not
 recalculate authoritative financial values in the browser.
 
 ## Health checks
@@ -123,7 +129,9 @@ make fixtures
 make fixtures-catalog
 ```
 
-`make fixtures` writes the assignment-sized mixed file under `backend/fixtures/generated/baseline/`. `make fixtures-catalog` also writes the contention, arithmetic, FX, and size variants used in later tests. Safe to rerun; directories are overwritten and gitignored.
+`make fixtures` writes the baseline mixed file under `backend/fixtures/generated/baseline/`.
+`make fixtures-catalog` also writes contention, arithmetic, FX, and size variants
+used by the test suite. Safe to rerun; directories are overwritten and gitignored.
 
 ```bash
 uv run --project backend --locked ledger-generate-fixtures --help
@@ -160,8 +168,9 @@ Individual targets include `make test`, `make lint`, `make typecheck`, and `make
 
 ## Documentation
 
-Architecture decisions, the database model, API contract, delivery checklist,
-performance notes, phase summaries, implementation plans, and the original
-assignment notes are maintained as local working documents. The entire `docs/`
-folder (along with the assignment notes and plans) is intentionally excluded
-from version control for this workspace.
+- [Specification](docs/SPECIFICATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Repository navigation](docs/REPO_NAVIGATION.md)
+- [Performance report](docs/PERFORMANCE.md)
+
+Additional planning material is kept outside the tracked application files.
