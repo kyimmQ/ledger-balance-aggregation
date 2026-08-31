@@ -16,6 +16,11 @@ class ApiRouteError(Exception):
         super().__init__(message)
 
 
+class UnauthorizedError(ApiRouteError):
+    def __init__(self) -> None:
+        super().__init__(401, "UNAUTHORIZED", "Authentication required")
+
+
 class InvalidAccountIdError(ApiRouteError):
     def __init__(self, raw: str) -> None:
         super().__init__(400, "INVALID_ACCOUNT_ID", f"Invalid account ID: {raw!r}")

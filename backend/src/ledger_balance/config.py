@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65_535)
     api_allowed_origins: str = "http://localhost:5173"
     api_query_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
+    api_key: SecretStr | None = Field(default=None, min_length=32)
     ingest_concurrency: int = Field(default=10, ge=1, le=100)
 
     @property

@@ -41,10 +41,13 @@ def _error_response(request: Request, error: ApiRouteError) -> JSONResponse:
     body = ErrorResponse(
         error=ErrorDetail(code=error.code, message=error.public_message, requestId=request_id)
     )
+    headers = {"X-Request-ID": request_id}
+    if error.status_code == status.HTTP_401_UNAUTHORIZED:
+        headers["WWW-Authenticate"] = "ApiKey"
     return JSONResponse(
         status_code=error.status_code,
         content=body.model_dump(by_alias=True),
-        headers={"X-Request-ID": request_id},
+        headers=headers,
     )
 
 
@@ -99,6 +102,7 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        app.state.settings = resolved_settings
         await resolved_database.connect()
         app.state.database = resolved_database
         app.state.read_repository = resolved_repository
@@ -120,7 +124,7 @@ def create_app(
         allow_origins=list(resolved_settings.allowed_origins),
         allow_credentials=False,
         allow_methods=["GET", "OPTIONS"],
-        allow_headers=["Accept", "Content-Type", "X-Request-ID"],
+        allow_headers=["Accept", "Content-Type", "X-API-Key", "X-Request-ID"],
     )
 
     @app.middleware("http")

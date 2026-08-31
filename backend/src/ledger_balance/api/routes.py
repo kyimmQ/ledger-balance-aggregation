@@ -4,6 +4,7 @@ from typing import Protocol, cast
 import asyncpg  # type: ignore[import-untyped]
 from fastapi import APIRouter, Depends, Query, Request
 
+from ledger_balance.api.auth import require_api_key
 from ledger_balance.api.contracts import AccountBalanceResponse, TotalBalanceResponse
 from ledger_balance.api.conversion import convert_usd, format_money
 from ledger_balance.api.errors import (
@@ -33,7 +34,10 @@ class ReadRepository(Protocol):
     async def total_snapshot(self, currency: CurrencyCode) -> TotalBalanceSnapshot: ...
 
 
-router = APIRouter(prefix="/api")
+router = APIRouter(
+    prefix="/api",
+    dependencies=[Depends(require_api_key)],
+)
 
 
 def repository_from_request(request: Request) -> ReadRepository:
