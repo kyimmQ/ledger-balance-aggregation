@@ -34,6 +34,12 @@ _STOP = _StopSignal()
 type QueueItem = BalanceWorkItem | _StopSignal
 
 
+class WorkItemPersistenceError(RuntimeError):
+    def __init__(self, sequence: int, cause: Exception) -> None:
+        self.sequence = sequence
+        super().__init__(f"transaction {sequence} persistence failed: {cause}")
+
+
 async def _produce(
     queue: asyncio.Queue[QueueItem],
     transactions_path: Path,
@@ -58,7 +64,10 @@ async def _consume(queue: asyncio.Queue[QueueItem], repository: LedgerRepository
         item = await queue.get()
         if isinstance(item, _StopSignal):
             return
-        await repository.add_balance_delta(item.transaction, item.delta)
+        try:
+            await repository.add_balance_delta(item.transaction, item.delta)
+        except Exception as error:
+            raise WorkItemPersistenceError(item.sequence, error) from error
 
 
 def _first_exception(error: ExceptionGroup[Exception]) -> Exception:

@@ -46,6 +46,8 @@ make ingest TRANSACTIONS=/path/to/transactions.csv RATES=/path/to/exchange_rates
 
 Ingestion validates the complete rate file before changing the database, then clears and replaces the live ledger tables. Transaction rows are streamed through a bounded asyncio worker pipeline. Each worker awaits one atomic per-row PostgreSQL upsert at a time; queue capacity and worker count equal `INGEST_CONCURRENCY`, which may not exceed the pool maximum. If a transaction or database operation fails after the reset, the live tables may contain partial data until the command is rerun.
 
+The first producer or worker failure cancels and awaits the bounded pipeline. Individual additive writes are never retried because a lost response may hide a committed update. Ctrl+C also waits for task cleanup before the pool closes. A failed or interrupted run may leave partial data and must be rerun from reset.
+
 Start the FastAPI server on `http://localhost:8000`:
 
 ```bash
