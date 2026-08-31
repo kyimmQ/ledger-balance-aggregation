@@ -14,15 +14,20 @@ class Database:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._pool: asyncpg.Pool | None = None
+        self._active_connections = 0
+        self._maximum_active_connections = 0
 
     async def connect(self) -> None:
         if self._pool is not None:
             return
-        self._pool = await asyncpg.create_pool(
+        pool = await asyncpg.create_pool(
             dsn=self._settings.database_url,
             min_size=self._settings.database_pool_min_size,
             max_size=self._settings.database_pool_max_size,
         )
+        self._pool = pool
+        self._active_connections = 0
+        self._maximum_active_connections = 0
 
     async def disconnect(self) -> None:
         if self._pool is None:
@@ -35,7 +40,23 @@ class Database:
         if self._pool is None:
             raise RuntimeError("Database pool is not connected")
         async with self._pool.acquire() as connection:
-            yield connection
+            self._active_connections += 1
+            self._maximum_active_connections = max(
+                self._maximum_active_connections,
+                self._active_connections,
+            )
+            try:
+                yield connection
+            finally:
+                self._active_connections -= 1
+
+    @property
+    def active_connections(self) -> int:
+        return self._active_connections
+
+    @property
+    def maximum_active_connections(self) -> int:
+        return self._maximum_active_connections
 
     async def fetch_value(self, query: str, *args: object) -> Any:
         async with self.connection() as connection:

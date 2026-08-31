@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 ledger-generate-fixtures = "ledger_balance.tools.generate_fixtures:main"
+ledger-benchmark-ingest = "ledger_balance.tools.benchmark_ingestion:main"
 ledger-ingest = "ledger_balance.ingestion.cli:main"
 ledger-serve = "ledger_balance.api.cli:main"
 

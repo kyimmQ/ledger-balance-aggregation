@@ -87,8 +87,8 @@
 ### Ingestion and persistence
 
 - [ ] A successful rerun replaces rather than adds to the previous dataset.
-- [ ] Concurrent atomic increments lose no updates.
-- [ ] Work is bounded by a queue/semaphore and connection pool.
+- [x] Concurrent atomic increments lose no updates.
+- [x] Work is bounded by a queue, fixed workers, and asyncpg connection pool; no semaphore is used.
 - [ ] A run clears live tables before rebuilding them.
 - [ ] Empty, partial, and changing API results during ingestion are accepted and documented.
 - [ ] A failed run may leave partial data, and rerunning clears and rebuilds it.
@@ -114,7 +114,7 @@
 ### Delivery
 
 - [ ] All migrations, tests, linting, type checks, and builds pass.
-- [ ] Ingestion of 50,000 rows is measured and documented.
+- [x] Ingestion of 50,000 rows is measured and documented.
 - [ ] Restart isolation is demonstrated after the ingestion process exits.
 - [ ] A clean checkout can be run using only documented commands.
 - [ ] No secrets, local implementation logs, or machine-specific paths are committed.

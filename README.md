@@ -48,6 +48,22 @@ Ingestion validates the complete rate file before changing the database, then cl
 
 The first producer or worker failure cancels and awaits the bounded pipeline. Individual additive writes are never retried because a lost response may hide a committed update. Ctrl+C also waits for task cleanup before the pool closes. A failed or interrupted run may leave partial data and must be rerun from reset.
 
+PostgreSQL contention tests compare the complete concurrent result with the sequential decimal oracle, including repeated 50,000-row updates to one account.
+
+## Benchmark ingestion
+
+Run the complete replacement-ingestion benchmark for the baseline or hot-account fixture:
+
+```bash
+make benchmark
+make benchmark TRANSACTIONS=backend/fixtures/generated/hotspot/transactions.csv \
+  RATES=backend/fixtures/generated/hotspot/exchange_rates.csv
+```
+
+Each command replaces the configured database contents and verifies every stored
+account row and the exact total against the sequential decimal oracle. See the
+[measured local results](docs/performance.md) for environment details and limitations.
+
 Start the FastAPI server on `http://localhost:8000`:
 
 ```bash

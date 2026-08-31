@@ -2,8 +2,9 @@ UV := uv
 UV_PROJECT := --project backend
 TRANSACTIONS ?= backend/fixtures/generated/baseline/transactions.csv
 RATES ?= backend/fixtures/generated/baseline/exchange_rates.csv
+BENCHMARK_CONCURRENCIES ?= 1 2 5 10
 
-.PHONY: install install-backend install-frontend lock db-up db-down migrate ingest api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
+.PHONY: install install-backend install-frontend lock db-up db-down migrate ingest benchmark api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
 
 install: install-backend install-frontend
 
@@ -18,6 +19,12 @@ lock:
 
 ingest:
 	$(UV) run $(UV_PROJECT) --locked ledger-ingest --transactions $(TRANSACTIONS) --rates $(RATES)
+
+benchmark:
+	$(UV) run $(UV_PROJECT) --locked ledger-benchmark-ingest \
+		--transactions $(TRANSACTIONS) \
+		--rates $(RATES) \
+		--concurrency $(BENCHMARK_CONCURRENCIES)
 
 api:
 	$(UV) run $(UV_PROJECT) --locked ledger-serve

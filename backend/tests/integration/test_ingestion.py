@@ -15,6 +15,7 @@ pytestmark = pytest.mark.integration
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SPECIFICATION = PROJECT_ROOT / "backend/tests/fixtures/specification"
 GENERATED = PROJECT_ROOT / "backend/fixtures/generated"
+DEFAULT_CONCURRENCY = 10
 
 
 @pytest.fixture
@@ -27,11 +28,17 @@ async def database() -> AsyncGenerator[Database, None]:
         await value.disconnect()
 
 
-async def ingest_directory(database: Database, directory: Path) -> IngestionResult:
+async def ingest_directory(
+    database: Database,
+    directory: Path,
+    *,
+    concurrency: int = DEFAULT_CONCURRENCY,
+) -> IngestionResult:
     return await ingest(
         database,
         directory / "transactions.csv",
         directory / "exchange_rates.csv",
+        concurrency=concurrency,
     )
 
 
@@ -159,23 +166,86 @@ async def test_different_dataset_replaces_old_balances_and_rates(
     assert await db_connection.fetchval("SELECT count(*) FROM exchange_rates") == result.rate_count
 
 
-async def test_failure_after_valid_row_leaves_committed_partial_data(
+@pytest.mark.parametrize("attempt", range(3))
+async def test_hot_account_repeated_runs_lose_no_updates(
+    attempt: int,
+    database: Database,
+    db_connection: asyncpg.Connection,
+) -> None:
+    del attempt
+    directory = GENERATED / "hotspot"
+
+    result = await ingest_directory(database, directory, concurrency=10)
+
+    await assert_expected_balances(db_connection, directory, result)
+    rows = await db_connection.fetch(
+        "SELECT account_id, balance_usd FROM account_balances ORDER BY account_id"
+    )
+    assert [tuple(row) for row in rows] == [(100, Decimal("788150.493642082600000000"))]
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "concurrency"),
+    [
+        ("minimal-accounts", 2),
+        ("minimal-accounts", 5),
+        ("minimal-accounts", 10),
+        ("baseline", 10),
+        ("pareto", 10),
+    ],
+)
+async def test_contention_distributions_match_oracle(
+    fixture_name: str,
+    concurrency: int,
+    database: Database,
+    db_connection: asyncpg.Connection,
+) -> None:
+    directory = GENERATED / fixture_name
+
+    result = await ingest_directory(database, directory, concurrency=concurrency)
+
+    await assert_expected_balances(db_connection, directory, result)
+
+
+async def test_failure_leaves_only_exact_valid_prefix_and_clean_rerun_recovers(
     database: Database, db_connection: asyncpg.Connection, tmp_path: Path
 ) -> None:
     rates = tmp_path / "exchange_rates.csv"
     rates.write_text("date,currency,rate\n2026-06-15,USD,1\n", encoding="utf-8")
     transactions = tmp_path / "transactions.csv"
-    transactions.write_text(
-        "id,name,plus,minus,currency,date\n"
-        "100,acct100,12.50,0,USD,2026-06-15\n"
-        "243,acct243,4.00,0,EUR,2026-06-15\n",
-        encoding="utf-8",
+    valid_prefix = {
+        account_id: (f"acct{account_id}", Decimal(f"{account_id - 99}.25"))
+        for account_id in range(100, 125)
+    }
+    rows = ["id,name,plus,minus,currency,date"]
+    rows.extend(
+        f"{account_id},{name},{amount},0,USD,2026-06-15"
+        for account_id, (name, amount) in valid_prefix.items()
     )
+    rows.append("999,invalid,4.00,0,EUR,2026-06-15")
+    transactions.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
+    result: IngestionResult | None = None
     with pytest.raises(InputFileError, match="missing historical rate"):
-        await ingest(database, transactions, rates)
+        result = await ingest(
+            database,
+            transactions,
+            rates,
+            concurrency=DEFAULT_CONCURRENCY,
+        )
+    assert result is None
 
-    rows = await db_connection.fetch(
+    stored_rows = await db_connection.fetch(
         "SELECT account_id, name, balance_usd FROM account_balances ORDER BY account_id"
     )
-    assert [tuple(row) for row in rows] == [(100, "acct100", Decimal("12.500000000000000000"))]
+    stored_ids = [row["account_id"] for row in stored_rows]
+    assert len(stored_ids) == len(set(stored_ids))
+    assert set(stored_ids) <= set(valid_prefix)
+    assert 999 not in stored_ids
+    for row in stored_rows:
+        expected_name, expected_balance = valid_prefix[row["account_id"]]
+        assert (row["name"], row["balance_usd"]) == (expected_name, expected_balance)
+
+    recovery_directory = GENERATED / "micro"
+    recovery_result = await ingest_directory(database, recovery_directory)
+    await assert_expected_balances(db_connection, recovery_directory, recovery_result)
