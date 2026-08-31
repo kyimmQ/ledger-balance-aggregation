@@ -39,3 +39,8 @@ def test_parses_comma_separated_origins() -> None:
         "http://localhost:5173",
         "http://localhost:4173",
     )
+
+
+def test_rejects_invalid_api_query_timeout() -> None:
+    with pytest.raises(ValidationError):
+        Settings(api_query_timeout_seconds=0)

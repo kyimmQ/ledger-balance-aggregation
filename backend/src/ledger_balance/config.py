@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, ge=1, le=65_535)
     api_allowed_origins: str = "http://localhost:5173"
+    api_query_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
     ingest_concurrency: int = Field(default=10, ge=1, le=100)
 
     @property

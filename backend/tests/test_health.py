@@ -42,4 +42,7 @@ def test_readiness_failure() -> None:
         response = client.get("/health/ready")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Database unavailable"}
+    body = response.json()
+    assert body["error"]["code"] == "DATABASE_UNAVAILABLE"
+    assert body["error"]["message"] == "Database unavailable"
+    assert response.headers["X-Request-ID"] == body["error"]["requestId"]

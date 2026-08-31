@@ -68,8 +68,9 @@ LEFT JOIN latest_rate ON TRUE
 
 
 class BalanceReadRepository:
-    def __init__(self, database: Database) -> None:
+    def __init__(self, database: Database, query_timeout_seconds: float | None = None) -> None:
         self._database = database
+        self._query_timeout_seconds = query_timeout_seconds
 
     async def account_snapshot(
         self,
@@ -81,12 +82,17 @@ class BalanceReadRepository:
                 ACCOUNT_BALANCE_SNAPSHOT_SQL,
                 int(account_id),
                 str(currency),
+                timeout=self._query_timeout_seconds,
             )
         return _account_snapshot(row)
 
     async def total_snapshot(self, currency: CurrencyCode) -> TotalBalanceSnapshot:
         async with self._database.connection() as connection:
-            row = await connection.fetchrow(TOTAL_BALANCE_SNAPSHOT_SQL, str(currency))
+            row = await connection.fetchrow(
+                TOTAL_BALANCE_SNAPSHOT_SQL,
+                str(currency),
+                timeout=self._query_timeout_seconds,
+            )
         return _total_snapshot(row)
 
 

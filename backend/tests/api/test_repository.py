@@ -20,7 +20,10 @@ class FakeConnection:
         self.row = row
         self.calls: list[tuple[object, ...]] = []
 
-    async def fetchrow(self, query: str, *args: object) -> Mapping[str, object] | None:
+    async def fetchrow(
+        self, query: str, *args: object, **kwargs: object
+    ) -> Mapping[str, object] | None:
+        del kwargs
         self.calls.append((query, *args))
         return self.row
 
