@@ -1,6 +1,8 @@
 import type { ChangeEvent } from 'react'
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP'
+import type { CurrencyCode } from '../api/types'
+
+export type { CurrencyCode } from '../api/types'
 
 export interface CurrencyOption {
   value: CurrencyCode
