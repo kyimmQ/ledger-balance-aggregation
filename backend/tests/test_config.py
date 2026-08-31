@@ -46,6 +46,19 @@ def test_rejects_invalid_api_query_timeout() -> None:
         Settings(api_query_timeout_seconds=0)
 
 
+@pytest.mark.parametrize(
+    "field",
+    [
+        "api_rate_limit_requests",
+        "api_rate_limit_window_seconds",
+        "api_rate_limit_max_clients",
+    ],
+)
+def test_rejects_non_positive_rate_limit_settings(field: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate({field: 0})
+
+
 def test_api_key_is_optional_and_secret() -> None:
     settings = Settings(api_key=SecretStr("a" * 32))
 

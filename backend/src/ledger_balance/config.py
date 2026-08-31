@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65_535)
     api_allowed_origins: str = "http://localhost:5173"
     api_query_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
+    api_rate_limit_requests: int = Field(default=120, ge=1, le=100_000)
+    api_rate_limit_window_seconds: int = Field(default=60, ge=1, le=86_400)
+    api_rate_limit_max_clients: int = Field(default=10_000, ge=1, le=1_000_000)
     api_key: SecretStr | None = Field(default=None, min_length=32)
     ingest_concurrency: int = Field(default=10, ge=1, le=100)
 

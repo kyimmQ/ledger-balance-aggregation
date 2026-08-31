@@ -21,6 +21,12 @@ class UnauthorizedError(ApiRouteError):
         super().__init__(401, "UNAUTHORIZED", "Authentication required")
 
 
+class RateLimitExceededError(ApiRouteError):
+    def __init__(self, retry_after_seconds: int) -> None:
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(429, "RATE_LIMITED", "Too many requests")
+
+
 class InvalidAccountIdError(ApiRouteError):
     def __init__(self, raw: str) -> None:
         super().__init__(400, "INVALID_ACCOUNT_ID", f"Invalid account ID: {raw!r}")

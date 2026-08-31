@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ledger_balance.api.contracts import ErrorDetail, ErrorResponse
 from ledger_balance.api.errors import ApiRouteError, DatabaseUnavailableError
+from ledger_balance.api.rate_limit import FixedWindowRateLimiter, RateLimitDecision
 from ledger_balance.api.repository import BalanceReadRepository
 from ledger_balance.api.routes import router
 from ledger_balance.config import Settings, get_settings
@@ -36,12 +37,25 @@ def _request_id(request: Request) -> str:
     return str(uuid4())
 
 
+def _rate_limit_headers(request: Request) -> dict[str, str]:
+    decision = getattr(request.state, "rate_limit_decision", None)
+    if not isinstance(decision, RateLimitDecision):
+        return {}
+    headers = {
+        "X-RateLimit-Limit": str(decision.limit),
+        "X-RateLimit-Remaining": str(decision.remaining),
+    }
+    if decision.retry_after_seconds is not None:
+        headers["Retry-After"] = str(decision.retry_after_seconds)
+    return headers
+
+
 def _error_response(request: Request, error: ApiRouteError) -> JSONResponse:
     request_id = getattr(request.state, "request_id", str(uuid4()))
     body = ErrorResponse(
         error=ErrorDetail(code=error.code, message=error.public_message, requestId=request_id)
     )
-    headers = {"X-Request-ID": request_id}
+    headers = {"X-Request-ID": request_id, **_rate_limit_headers(request)}
     if error.status_code == status.HTTP_401_UNAUTHORIZED:
         headers["WWW-Authenticate"] = "ApiKey"
     return JSONResponse(
@@ -99,10 +113,16 @@ def create_app(
     resolved_repository = repository or BalanceReadRepository(
         cast(Database, resolved_database), resolved_settings.api_query_timeout_seconds
     )
+    resolved_rate_limiter = FixedWindowRateLimiter(
+        resolved_settings.api_rate_limit_requests,
+        resolved_settings.api_rate_limit_window_seconds,
+        resolved_settings.api_rate_limit_max_clients,
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.settings = resolved_settings
+        app.state.rate_limiter = resolved_rate_limiter
         await resolved_database.connect()
         app.state.database = resolved_database
         app.state.read_repository = resolved_repository
@@ -139,6 +159,7 @@ def create_app(
         except Exception as exception:
             response = await _unexpected_error_handler(request, exception)
         response.headers["X-Request-ID"] = request.state.request_id
+        response.headers.update(_rate_limit_headers(request))
         response.headers["X-Content-Type-Options"] = "nosniff"
         if request.url.path.startswith("/api/") or request.url.path.startswith("/health/"):
             response.headers["Cache-Control"] = "no-store"

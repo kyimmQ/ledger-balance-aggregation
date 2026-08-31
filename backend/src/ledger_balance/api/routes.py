@@ -19,6 +19,7 @@ from ledger_balance.api.errors import (
     ValuationRateUnavailableError,
 )
 from ledger_balance.api.query_models import AccountBalanceSnapshot, TotalBalanceSnapshot
+from ledger_balance.api.rate_limit import enforce_rate_limit
 from ledger_balance.domain.currencies import USD
 from ledger_balance.domain.models import AccountId, CurrencyCode
 
@@ -36,7 +37,7 @@ class ReadRepository(Protocol):
 
 router = APIRouter(
     prefix="/api",
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_api_key), Depends(enforce_rate_limit)],
 )
 
 
