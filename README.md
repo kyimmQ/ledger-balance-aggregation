@@ -64,8 +64,8 @@ make benchmark TRANSACTIONS=backend/fixtures/generated/hotspot/transactions.csv 
 ```
 
 Each command replaces the configured database contents and verifies every stored
-account row and the exact total against the sequential decimal oracle. See the
-[measured local results](docs/performance.md) for environment details and limitations.
+account row and the exact total against the sequential decimal oracle. Local
+benchmark details and limitations are recorded in `docs/performance.md`.
 
 Start the FastAPI server on `http://localhost:8000`:
 
@@ -82,7 +82,7 @@ GET http://localhost:8000/api/balances/total?currency=EUR
 
 The API has no authentication requirement for this assignment. The application
 rate limiter is bounded and process-local, not a distributed security boundary.
-See the [API contract](docs/api-contract.md) for headers, errors, CORS, and
+See the local `docs/api-contract.md` working note for headers, errors, CORS, and
 live-read behavior.
 
 Start the Vite development server on `http://localhost:5173`:
@@ -160,9 +160,8 @@ Individual targets include `make test`, `make lint`, `make typecheck`, and `make
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [Architecture decisions](docs/decisions.md)
-- [Database model](docs/data-model.md)
-- [API contract](docs/api-contract.md)
-- [Phase 6 frontend summary](docs/phase-06-summary.md)
-- [Implementation plan](plan/README.md)
+Architecture decisions, the database model, API contract, delivery checklist,
+performance notes, phase summaries, implementation plans, and the original
+assignment notes are maintained as local working documents. The entire `docs/`
+folder (along with the assignment notes and plans) is intentionally excluded
+from version control for this workspace.
