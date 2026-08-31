@@ -25,17 +25,30 @@ class FakeDatabase:
 
 
 @pytest.fixture(autouse=True)
-def reset_databases() -> None:
+def reset_databases(monkeypatch: pytest.MonkeyPatch) -> None:
     FakeDatabase.instances = []
+    settings = Settings(
+        database_pool_min_size=1,
+        database_pool_max_size=7,
+        ingest_concurrency=4,
+    )
+    monkeypatch.setattr(cli, "get_settings", lambda: settings)
 
 
 async def test_run_connects_ingests_and_disconnects(monkeypatch: pytest.MonkeyPatch) -> None:
     expected = IngestionResult(5, 2, 3, Decimal("96.407375"))
 
-    async def ingest(database: FakeDatabase, transactions: Path, rates: Path) -> IngestionResult:
+    async def ingest(
+        database: FakeDatabase,
+        transactions: Path,
+        rates: Path,
+        *,
+        concurrency: int,
+    ) -> IngestionResult:
         assert database.events == ["connect"]
         assert transactions == Path("transactions.csv")
         assert rates == Path("rates.csv")
+        assert concurrency == 4
         return expected
 
     monkeypatch.setattr(cli, "Database", FakeDatabase)
@@ -48,7 +61,8 @@ async def test_run_connects_ingests_and_disconnects(monkeypatch: pytest.MonkeyPa
 
 
 async def test_run_disconnects_when_ingestion_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fail(*_args: object) -> IngestionResult:
+    async def fail(*_args: object, concurrency: int) -> IngestionResult:
+        assert concurrency == 4
         raise RuntimeError("verification failed")
 
     monkeypatch.setattr(cli, "Database", FakeDatabase)

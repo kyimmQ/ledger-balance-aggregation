@@ -13,10 +13,16 @@ from ledger_balance.input.errors import InputFileError
 
 
 async def run(transactions_path: Path, rates_path: Path) -> IngestionResult:
-    database = Database(get_settings())
+    settings = get_settings()
+    database = Database(settings)
     await database.connect()
     try:
-        return await ingest(database, transactions_path, rates_path)
+        return await ingest(
+            database,
+            transactions_path,
+            rates_path,
+            concurrency=settings.ingest_concurrency,
+        )
     finally:
         await database.disconnect()
 
