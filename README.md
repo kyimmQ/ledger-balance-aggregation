@@ -44,6 +44,7 @@ Apply the schema migration, then ingest the generated baseline files:
 
 ```bash
 make migrate
+make fixtures
 make ingest
 ```
 
