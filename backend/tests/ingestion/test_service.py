@@ -16,6 +16,8 @@ from ledger_balance.domain.models import (
     Transaction,
 )
 from ledger_balance.ingestion import service
+from ledger_balance.ingestion.errors import WorkItemPersistenceError
+from ledger_balance.ingestion.models import IngestionResult
 from ledger_balance.ingestion.repository import LedgerRepository, StoredStats
 from ledger_balance.input.errors import InputFileError
 
@@ -315,7 +317,7 @@ async def test_completion_order_may_differ_from_input_order(
     result = await ingestion
 
     assert repository.completion_order == [2, 1, 3]
-    assert result == service.IngestionResult(3, 2, 1, Decimal("3.2496"))
+    assert result == IngestionResult(3, 2, 1, Decimal("3.2496"))
 
 
 async def test_stats_and_success_wait_for_slowest_write(
@@ -359,7 +361,7 @@ async def test_result_uses_actual_database_stats_without_runtime_expected_total(
         cast(Database, object()), Path("transactions.csv"), Path("rates.csv")
     )
 
-    assert result == service.IngestionResult(2, 91, 37, Decimal("-987654.321098"))
+    assert result == IngestionResult(2, 91, 37, Decimal("-987654.321098"))
 
 
 async def test_empty_transaction_stream_stops_all_workers_and_reports_actual_stats(
@@ -390,7 +392,7 @@ async def test_empty_transaction_stream_stops_all_workers_and_reports_actual_sta
     assert worker_count == 3
     assert repository.calls == []
     assert repository.events == ["reset", ("rates", 1), "stats"]
-    assert result == service.IngestionResult(0, 0, 1, Decimal("0"))
+    assert result == IngestionResult(0, 0, 1, Decimal("0"))
 
 
 async def test_producer_error_cancels_workers_waiting_for_input(
@@ -474,7 +476,7 @@ async def test_worker_error_cancels_producer_blocked_on_full_queue(
 
     async with asyncio.timeout(1):
         with pytest.raises(
-            service.WorkItemPersistenceError,
+            WorkItemPersistenceError,
             match=r"^transaction 2 persistence failed: database unavailable$",
         ):
             await service.ingest(
@@ -504,7 +506,7 @@ async def test_possibly_applied_additive_write_is_attempted_once(
 
     async with asyncio.timeout(1):
         with pytest.raises(
-            service.WorkItemPersistenceError,
+            WorkItemPersistenceError,
             match=r"^transaction 1 persistence failed: connection lost after send$",
         ):
             await service.ingest(
@@ -542,7 +544,7 @@ async def test_worker_failure_cancels_sibling_in_flight_repository_call(
 
     async with asyncio.timeout(1):
         with pytest.raises(
-            service.WorkItemPersistenceError,
+            WorkItemPersistenceError,
             match=r"^transaction 2 persistence failed: write rejected$",
         ):
             await ingestion
@@ -580,6 +582,74 @@ async def test_external_cancellation_propagates_after_all_workers_finish(
         with pytest.raises(asyncio.CancelledError):
             await ingestion
 
+    for account_id in (100, 101):
+        assert repository.cancelled_event(account_id).is_set()
+        assert repository.finished_event(account_id).is_set()
+    assert not repository.stats_started.is_set()
+
+
+async def test_external_cancellation_stops_producer_blocked_on_full_queue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [transaction(100 + index, "1") for index in range(20)]
+    yielded_count = 0
+    blocked_put_count = 0
+    producer_blocked = asyncio.Event()
+    queues: list[asyncio.Queue[service.QueueItem]] = []
+
+    def controlled_rows() -> Iterator[Transaction]:
+        nonlocal yielded_count
+        for index, row in enumerate(rows, start=1):
+            yielded_count = index
+            yield row
+
+    class ObservableQueue(asyncio.Queue[service.QueueItem]):
+        async def put(self, item: service.QueueItem) -> None:
+            nonlocal blocked_put_count
+            if self.full():
+                blocked_put_count += 1
+                if blocked_put_count == 2:
+                    producer_blocked.set()
+            await super().put(item)
+
+    def capturing_queue(*, maxsize: int = 0) -> asyncio.Queue[service.QueueItem]:
+        queue = ObservableQueue(maxsize=maxsize)
+        queues.append(queue)
+        return queue
+
+    monkeypatch.setattr(service, "load_rates", lambda _: rate_book())
+    monkeypatch.setattr(service, "iter_transactions", lambda _path, _book: iter(controlled_rows()))
+    monkeypatch.setattr(service, "LedgerRepository", FailureRepository)
+    monkeypatch.setattr(
+        service,
+        "asyncio",
+        SimpleNamespace(Queue=capturing_queue, TaskGroup=asyncio.TaskGroup),
+    )
+    FailureRepository.call_gates = {100: asyncio.Event(), 101: asyncio.Event()}
+
+    ingestion = asyncio.create_task(
+        service.ingest(
+            cast(Database, object()),
+            Path("transactions.csv"),
+            Path("rates.csv"),
+            concurrency=2,
+        )
+    )
+    repository = await failure_repository_instance()
+    await wait_for(repository.started_event(100))
+    await wait_for(repository.started_event(101))
+    await wait_for(producer_blocked)
+
+    assert yielded_count == 5
+    assert queues[0].full()
+    ingestion.cancel()
+
+    async with asyncio.timeout(1):
+        with pytest.raises(asyncio.CancelledError):
+            await ingestion
+
+    assert yielded_count < len(rows)
+    assert [item for item, _delta in repository.calls] == rows[:2]
     for account_id in (100, 101):
         assert repository.cancelled_event(account_id).is_set()
         assert repository.finished_event(account_id).is_set()
@@ -625,7 +695,7 @@ async def test_failure_uses_no_stop_marker_drain_or_queue_accounting(
     FailureRepository.failures = {100: RuntimeError("write failed")}
 
     async with asyncio.timeout(1):
-        with pytest.raises(service.WorkItemPersistenceError):
+        with pytest.raises(WorkItemPersistenceError):
             await service.ingest(
                 cast(Database, object()), Path("transactions.csv"), Path("rates.csv")
             )

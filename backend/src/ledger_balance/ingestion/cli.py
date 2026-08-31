@@ -8,7 +8,8 @@ import asyncpg  # type: ignore[import-untyped]
 
 from ledger_balance.config import get_settings
 from ledger_balance.db.pool import Database
-from ledger_balance.ingestion.service import IngestionResult, ingest
+from ledger_balance.ingestion.models import IngestionResult
+from ledger_balance.ingestion.service import ingest
 from ledger_balance.input.errors import InputFileError
 
 

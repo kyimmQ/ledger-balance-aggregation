@@ -9,7 +9,7 @@ from ledger_balance.config import Settings
 from ledger_balance.db.pool import Database
 from ledger_balance.domain.models import AccountBalance, AccountId, RateBook
 from ledger_balance.domain.reference import ReferenceResult
-from ledger_balance.ingestion.service import IngestionResult
+from ledger_balance.ingestion.models import IngestionResult
 from ledger_balance.tools import benchmark_ingestion as benchmark
 
 BALANCE = AccountBalance(AccountId(100), "acct100", Decimal("12.500000000000000000"))

@@ -7,7 +7,8 @@ from typing import ClassVar
 import pytest
 from ledger_balance.config import Settings
 from ledger_balance.ingestion import cli
-from ledger_balance.ingestion.service import IngestionResult, WorkItemPersistenceError
+from ledger_balance.ingestion.errors import WorkItemPersistenceError
+from ledger_balance.ingestion.models import IngestionResult
 from ledger_balance.input.errors import InputFileError
 
 
