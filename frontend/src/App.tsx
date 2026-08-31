@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
-import AccountBalanceCard from './components/AccountBalanceCard'
+import AccountBalanceTable from './components/AccountBalanceTable'
 import AccountLookupForm from './components/AccountLookupForm'
-import CurrencySelector from './components/CurrencySelector'
 import FeedbackMessage from './components/FeedbackMessage'
 import Footer from './components/Footer'
 import Header from './components/Header'
@@ -10,44 +9,31 @@ import TotalBalanceCard from './components/TotalBalanceCard'
 import type { AsyncState } from './api/state'
 import type { AccountBalance, TotalBalance } from './api/types'
 import { getLedgerQueryError, useLedgerQueries } from './hooks/useLedgerQueries'
+import { useSupportedCurrencies } from './hooks/useSupportedCurrencies'
 import './App.css'
-
-const supportedCurrencies = [
-  { value: 'USD' as const, label: 'USD — US dollar' },
-  { value: 'EUR' as const, label: 'EUR — euro' },
-  { value: 'GBP' as const, label: 'GBP — British pound' },
-]
 
 function App() {
   const {
-    currency,
+    totalCurrency,
+    accountCurrency,
     totalState,
     accountState,
     lookupAccount,
-    changeCurrency,
+    changeTotalCurrency,
+    changeAccountCurrency,
     retryTotal,
     retryAccount,
   } = useLedgerQueries()
+  const currenciesState = useSupportedCurrencies()
   const [accountId, setAccountId] = useState('')
-  const [validationMessage, setValidationMessage] = useState<string>()
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
-    if (!/^[0-9]+$/.test(accountId) || !isValidAccountId(accountId)) {
-      setValidationMessage('Enter an account ID between 100 and 999.')
-      return
-    }
-
-    setValidationMessage(undefined)
     lookupAccount(accountId)
   }
 
   const handleAccountIdChange = (nextAccountId: string) => {
     setAccountId(nextAccountId)
-    if (validationMessage) {
-      setValidationMessage(undefined)
-    }
   }
 
   const totalError = totalState.status === 'error'
@@ -56,8 +42,29 @@ function App() {
   const accountError = accountState.status === 'error'
     ? getLedgerQueryError(accountState.error)
     : undefined
+  const currenciesError = currenciesState.status === 'error'
+    ? getLedgerQueryError(currenciesState.error)
+    : undefined
   const totalPending = totalState.status === 'loading' || totalState.status === 'refreshing'
   const accountPending = accountState.status === 'loading' || accountState.status === 'refreshing'
+  const currenciesPending = currenciesState.status === 'loading'
+  const supportedCurrencies = currenciesState.status === 'success'
+    ? currenciesState.data.currencies.map((currency) => ({ value: currency, label: currency }))
+    : []
+  const showFeedback = !totalPending && !accountPending && !currenciesPending && Boolean(
+    currenciesError || accountError || totalError || totalState.status === 'success' || accountState.status === 'success',
+  )
+  const feedbackTone = currenciesError || accountError || totalError
+    ? 'error' as const
+    : 'success' as const
+  const feedbackText = getFeedbackMessage({
+    currenciesError,
+    accountError,
+    totalError,
+    accountState,
+    totalState,
+  })
+  const feedbackKey = `${feedbackTone}:${feedbackText}`
 
   useEffect(() => {
     document.title = 'Ledger balance dashboard'
@@ -67,27 +74,36 @@ function App() {
     <div className="app-shell">
       <Header />
       <main className="page-width main-content" aria-labelledby="dashboard-heading">
+        {showFeedback && (
+          <FeedbackMessage
+            key={feedbackKey}
+            tone={feedbackTone}
+            message={feedbackText}
+            announce={!totalPending && !accountPending}
+          />
+        )}
         <div className="intro-copy">
           <p className="eyebrow">Ledger workspace</p>
           <h2 id="dashboard-heading">A clear view of your balances</h2>
           <p>
-            Choose a display currency and look up an account when you are ready.
-            Results come directly from the ledger.
+            Choose a currency for the portfolio total, then look up an account in
+            its own currency. Results come directly from the ledger.
           </p>
         </div>
 
         <div className="dashboard-grid">
-          <TotalBalanceCard
-            currency={currency}
-            state={getBalanceDisplayState(totalState)}
-            total={hasTotalData(totalState) ? totalState.data.total : undefined}
-            valuationDate={
-              hasTotalData(totalState) ? totalState.data.valuationDate : undefined
-            }
-            message={totalError?.message}
-            pending={totalPending}
-            onRetry={retryTotal}
-          />
+          <aside className="total-summary" aria-label="Total summary">
+            <TotalBalanceCard
+              currency={totalCurrency}
+              state={getBalanceDisplayState(totalState)}
+              total={hasTotalData(totalState) ? totalState.data.total : undefined}
+              message={totalError?.message}
+              pending={totalPending}
+              onRetry={retryTotal}
+              currencyOptions={supportedCurrencies}
+              onCurrencyChange={changeTotalCurrency}
+            />
+          </aside>
 
           <section className="card lookup-card" aria-labelledby="lookup-heading">
             <div className="card-heading-row">
@@ -102,49 +118,23 @@ function App() {
               onSubmit={handleSubmit}
               disabled={accountPending}
               pending={accountPending}
-              validationMessage={validationMessage}
+              currency={accountCurrency}
+              currencyOptions={supportedCurrencies}
+              onCurrencyChange={changeAccountCurrency}
             />
-            <CurrencySelector
-              value={currency}
-              options={supportedCurrencies}
-              onChange={changeCurrency}
+            <AccountBalanceTable
+              state={getBalanceDisplayState(accountState)}
+              account={hasAccountData(accountState) ? accountState.data : undefined}
+              message={accountError?.message}
+              pending={accountPending}
+              onRetry={retryAccount}
             />
           </section>
-
-          <AccountBalanceCard
-            currency={currency}
-            state={getBalanceDisplayState(accountState)}
-            accountId={hasAccountData(accountState) ? accountState.data.accountId : undefined}
-            accountName={hasAccountData(accountState) ? accountState.data.name : undefined}
-            balance={hasAccountData(accountState) ? accountState.data.balance : undefined}
-            valuationDate={
-              hasAccountData(accountState) ? accountState.data.valuationDate : undefined
-            }
-            message={accountError?.message}
-            pending={accountPending}
-            onRetry={retryAccount}
-          />
         </div>
-
-        <FeedbackMessage
-          tone={accountError || totalError ? 'error' : totalState.status === 'success' ? 'success' : 'info'}
-          message={getFeedbackMessage({
-          accountError,
-          totalError,
-            accountState,
-            totalState,
-          })}
-          announce={!totalPending && !accountPending}
-        />
       </main>
       <Footer />
     </div>
   )
-}
-
-function isValidAccountId(accountId: string): boolean {
-  const value = Number(accountId)
-  return Number.isInteger(value) && value >= 100 && value <= 999
 }
 
 function getBalanceDisplayState(
@@ -177,16 +167,21 @@ function hasAccountData(
 }
 
 function getFeedbackMessage({
+  currenciesError,
   accountError,
   totalError,
   accountState,
   totalState,
 }: {
+  currenciesError?: { message: string }
   accountError?: { message: string }
   totalError?: { message: string }
   accountState: { status: string }
   totalState: { status: string }
 }): string {
+  if (currenciesError) {
+    return currenciesError.message
+  }
   if (accountError) {
     return accountError.message
   }

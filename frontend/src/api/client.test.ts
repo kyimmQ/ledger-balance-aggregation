@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   fetchAccountBalance,
+  fetchSupportedCurrencies,
   fetchTotalBalance,
 } from './client'
 import {
@@ -85,6 +86,20 @@ describe('API client', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/balances/total?currency=USD',
       expect.anything(),
+    )
+  })
+
+  it('loads supported currencies from the API', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(200, { currencies: ['USD', 'EUR', 'SGD'] }),
+    )
+
+    await expect(fetchSupportedCurrencies()).resolves.toEqual({
+      currencies: ['USD', 'EUR', 'SGD'],
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://ledger.example.test/root/api/currencies',
+      expect.objectContaining({ cache: 'no-store' }),
     )
   })
 

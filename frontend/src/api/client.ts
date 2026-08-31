@@ -1,5 +1,5 @@
 import { isAbortError, normalizeApiError } from './errors'
-import type { AccountBalance, TotalBalance } from './types'
+import type { AccountBalance, SupportedCurrencies, TotalBalance } from './types'
 
 const API_PATH_PREFIX = '/api'
 
@@ -18,6 +18,12 @@ export async function fetchTotalBalance(
 ): Promise<TotalBalance> {
   const path = `${API_PATH_PREFIX}/balances/total?currency=${encodeURIComponent(currency)}`
   return requestJson<TotalBalance>(path, signal)
+}
+
+export async function fetchSupportedCurrencies(
+  signal?: AbortSignal,
+): Promise<SupportedCurrencies> {
+  return requestJson<SupportedCurrencies>(`${API_PATH_PREFIX}/currencies`, signal)
 }
 
 export function buildApiUrl(path: string): string {

@@ -1,35 +1,32 @@
-import type { CurrencyCode } from './CurrencySelector'
+import CurrencySelector, { type CurrencyCode, type CurrencyOption } from './CurrencySelector'
+import { type BalanceDisplayState, getMoneyTone } from './balancePresentation'
 
-export type BalanceDisplayState =
-  | 'idle'
-  | 'loading'
-  | 'refreshing'
-  | 'success'
-  | 'not-found'
-  | 'empty'
-  | 'error'
+export type { BalanceDisplayState } from './balancePresentation'
 
 export interface TotalBalanceCardProps {
   currency: CurrencyCode
   total?: string
-  valuationDate?: string | null
   state: BalanceDisplayState
   message?: string
   pending?: boolean
   onRetry?: () => void
+  currencyOptions: readonly CurrencyOption[]
+  onCurrencyChange: (currency: CurrencyCode) => void
 }
 
 function TotalBalanceCard({
   currency,
   total,
-  valuationDate,
   state,
   message,
   pending = state === 'loading' || state === 'refreshing',
   onRetry,
+  currencyOptions,
+  onCurrencyChange,
 }: TotalBalanceCardProps) {
   const hasValue = state === 'success' || state === 'refreshing'
   const valueTone = total === undefined ? 'normal' : getMoneyTone(total)
+  const valueSize = total === undefined ? 'regular' : getTotalSize(total)
 
   return (
     <section
@@ -42,7 +39,14 @@ function TotalBalanceCard({
           <p className="card-kicker">Portfolio view</p>
           <h2 id="total-balance-heading">Total balance</h2>
         </div>
-        <span className="currency-chip">{currency}</span>
+        <CurrencySelector
+          id="total-currency"
+          label="Currency"
+          value={currency}
+          options={currencyOptions}
+          onChange={onCurrencyChange}
+          className="currency-selector-compact"
+        />
       </div>
       {state === 'idle' && (
         <p className="empty-message">
@@ -61,19 +65,10 @@ function TotalBalanceCard({
       )}
       {hasValue && total !== undefined && (
         <div className="balance-result">
-          <p className={`money-value money-${valueTone}`}>
+          <p className={`money-value total-money-${valueSize} money-${valueTone}`}>
             <span>{total}</span>
           </p>
-          {valueTone !== 'normal' && (
-            <p className={`balance-context balance-context-${valueTone}`}>
-              {valueTone === 'zero' ? 'Zero balance' : 'Negative balance'}
-            </p>
-          )}
-          {(valuationDate || currency === 'USD') && (
-            <p className="valuation-date">
-              {valuationDate ? `Valued ${valuationDate}` : 'Stored USD'}
-            </p>
-          )}
+          <p className="balance-currency">{currency}</p>
           {(state === 'success' || state === 'refreshing') && onRetry && (
             <button type="button" className="refresh-button" onClick={onRetry} disabled={pending}>
               {state === 'refreshing' ? 'Refreshing total balance…' : 'Refresh total balance'}
@@ -102,15 +97,15 @@ function getDefaultMessage(state: Exclude<BalanceDisplayState, 'idle' | 'loading
   return 'The total balance is not available yet.'
 }
 
-function getMoneyTone(value: string): 'normal' | 'negative' | 'zero' {
-  const trimmed = value.trim()
-  if (/^-/.test(trimmed) && !/^-0+(?:\.0+)?$/.test(trimmed)) {
-    return 'negative'
+function getTotalSize(value: string): 'regular' | 'compact' | 'long' {
+  const digitCount = value.replace(/[^0-9]/g, '').length
+  if (digitCount > 18) {
+    return 'long'
   }
-  if (/^[+-]?0+(?:\.0+)?$/.test(trimmed)) {
-    return 'zero'
+  if (digitCount > 12) {
+    return 'compact'
   }
-  return 'normal'
+  return 'regular'
 }
 
 export default TotalBalanceCard

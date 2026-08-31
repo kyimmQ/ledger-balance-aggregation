@@ -33,14 +33,31 @@ const account = (
 
 describe('ledger dashboard workflows', () => {
   const fetchMock = vi.fn<typeof fetch>()
+  const networkMock = vi.fn<typeof fetch>()
+  const scrollIntoViewMock = vi.fn()
+  let availableCurrencies: string[]
 
   beforeEach(() => {
     fetchMock.mockReset()
-    vi.stubGlobal('fetch', fetchMock)
+    networkMock.mockReset()
+    scrollIntoViewMock.mockReset()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoViewMock,
+    })
+    availableCurrencies = ['USD', 'EUR', 'GBP']
+    networkMock.mockImplementation((input, init) => {
+      if (String(input).includes('/api/currencies')) {
+        return Promise.resolve(mockResponse(200, { currencies: availableCurrencies }))
+      }
+      return fetchMock(input, init)
+    })
+    vi.stubGlobal('fetch', networkMock)
     vi.stubEnv('VITE_API_BASE_URL', '')
   })
 
   afterEach(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
     vi.restoreAllMocks()
     vi.unstubAllEnvs()
   })
@@ -51,10 +68,38 @@ describe('ledger dashboard workflows', () => {
     render(<App />)
 
     expect(await screen.findByText('0.005')).toBeInTheDocument()
-    expect(screen.getByText('Stored USD')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Total balance' })).getByText(
+      'USD',
+      { selector: '.balance-currency' },
+    )).toBeInTheDocument()
+    expect(networkMock).toHaveBeenCalledWith(
+      '/api/currencies',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/balances/total?currency=USD',
       expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }),
+    )
+  })
+
+  it('populates both selectors from the currencies endpoint', async () => {
+    availableCurrencies = ['USD', 'SGD']
+    fetchMock.mockResolvedValueOnce(mockResponse(200, total('USD', '1.00')))
+
+    render(<App />)
+
+    expect(await screen.findAllByRole('option', { name: 'SGD' })).toHaveLength(2)
+    expect(screen.queryByRole('option', { name: 'EUR' })).not.toBeInTheDocument()
+  })
+
+  it('uses the bounded long-value size for a large total', async () => {
+    const largeTotal = '123456789012345678901234567890.12'
+    fetchMock.mockResolvedValueOnce(mockResponse(200, total('USD', largeTotal)))
+
+    render(<App />)
+
+    expect((await screen.findByText(largeTotal)).closest('p')).toHaveClass(
+      'total-money-long',
     )
   })
 
@@ -72,6 +117,10 @@ describe('ledger dashboard workflows', () => {
     expect(await screen.findByText('acct100')).toBeInTheDocument()
     expect(screen.getByText(/ID 100/)).toBeInTheDocument()
     expect(screen.getByText('-12.30')).toBeInTheDocument()
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/accounts/100/balance?currency=USD',
@@ -79,7 +128,7 @@ describe('ledger dashboard workflows', () => {
     )
   })
 
-  it('refreshes the total and last account when currency changes', async () => {
+  it('refreshes totals and account results independently when their currencies change', async () => {
     fetchMock
       .mockResolvedValueOnce(mockResponse(200, total('USD', '100.00')))
       .mockResolvedValueOnce(mockResponse(200, account(100, 'USD', '10.00')))
@@ -93,29 +142,51 @@ describe('ledger dashboard workflows', () => {
     await user.click(screen.getByRole('button', { name: 'Look up balance' }))
     await screen.findByText('10.00')
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Display currency' }), 'EUR')
-
+    await user.selectOptions(
+      within(screen.getByRole('region', { name: 'Total balance' })).getByRole('combobox', { name: 'Currency' }),
+      'EUR',
+    )
     expect(await screen.findByText('91.00')).toBeInTheDocument()
+    expect(screen.getByText('10.00')).toBeInTheDocument()
+
+    await user.selectOptions(
+      within(screen.getByRole('region', { name: 'Account lookup' })).getByRole('combobox', { name: 'Currency' }),
+      'EUR',
+    )
+
     expect(await screen.findByText('9.10')).toBeInTheDocument()
-    expect(screen.getAllByText('Valued 2026-06-18')).toHaveLength(2)
+    expect(screen.queryByText(/2026-06-18/)).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/accounts/100/balance?currency=EUR',
       expect.anything(),
     )
   })
 
-  it('shows inline validation and does not call the API for an invalid account ID', async () => {
-    fetchMock.mockResolvedValueOnce(mockResponse(200, total('USD', '100.00')))
+  it('sends an unknown account ID to the API and shows only a not-found flash', async () => {
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(200, total('USD', '100.00')))
+      .mockResolvedValueOnce(mockResponse(404, {
+        error: {
+          code: 'ACCOUNT_NOT_FOUND',
+          message: 'Account 99 was not found',
+          requestId: 'request-99',
+        },
+      }))
     const user = userEvent.setup()
 
     render(<App />)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const input = screen.getByRole('textbox', { name: 'Account ID' })
     await user.type(input, '99')
     await user.click(screen.getByRole('button', { name: 'Look up balance' }))
 
-    expect(screen.getByText('Enter an account ID between 100 and 999.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That account was not found in the current ledger.',
+    )
+    expect(screen.getAllByText('That account was not found in the current ledger.')).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/accounts/99/balance?currency=USD',
+      expect.anything(),
+    )
   })
 
   it('disables duplicate account submits while the request is pending', async () => {
@@ -152,7 +223,7 @@ describe('ledger dashboard workflows', () => {
     await user.type(screen.getByRole('textbox', { name: 'Account ID' }), '999')
     await user.click(screen.getByRole('button', { name: 'Look up balance' }))
 
-    expect(await screen.findAllByText('That account was not found in the current ledger.')).toHaveLength(2)
+    expect(await screen.findAllByText('That account was not found in the current ledger.')).toHaveLength(1)
     expect(screen.queryByText('Account 999 was not found')).not.toBeInTheDocument()
     expect(screen.queryByText('private-request-id')).not.toBeInTheDocument()
   })
@@ -189,7 +260,14 @@ describe('ledger dashboard workflows', () => {
     await screen.findByText('100.00')
     await user.type(screen.getByRole('textbox', { name: 'Account ID' }), '100')
     await user.click(screen.getByRole('button', { name: 'Look up balance' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Display currency' }), 'EUR')
+    await user.selectOptions(
+      within(screen.getByRole('region', { name: 'Total balance' })).getByRole('combobox', { name: 'Currency' }),
+      'EUR',
+    )
+    await user.selectOptions(
+      within(screen.getByRole('region', { name: 'Account lookup' })).getByRole('combobox', { name: 'Currency' }),
+      'EUR',
+    )
 
     resolveEurTotal(mockResponse(200, total('EUR', '90.00', '2026-06-18')))
     resolveEurAccount(mockResponse(200, account(100, 'EUR', '9.00', '2026-06-18')))
@@ -266,7 +344,7 @@ describe('ledger dashboard workflows', () => {
     await user.click(retry)
 
     expect(await screen.findByText('0.00')).toBeInTheDocument()
-    expect(screen.getByText('Zero balance')).toBeInTheDocument()
+    expect(screen.queryByText('Zero balance')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('100')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(fetchMock).toHaveBeenLastCalledWith(
@@ -306,9 +384,9 @@ describe('ledger dashboard workflows', () => {
     await user.type(screen.getByRole('textbox', { name: 'Account ID' }), '100')
     await user.click(screen.getByRole('button', { name: 'Look up balance' }))
 
-    expect((await screen.findByText('-12.30')).closest('p')).toHaveClass('money-negative')
-    expect(screen.getByText('Negative balance')).toBeInTheDocument()
+    expect((await screen.findByText('-12.30')).closest('td')).toHaveClass('money-negative')
+    expect(screen.queryByText('Negative balance')).not.toBeInTheDocument()
     expect(screen.getByText('0.00').closest('p')).toHaveClass('money-zero')
-    expect(screen.getByText('Zero balance')).toBeInTheDocument()
+    expect(screen.queryByText('Zero balance')).not.toBeInTheDocument()
   })
 })

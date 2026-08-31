@@ -22,6 +22,7 @@ import type { AccountBalance, CurrencyCode, TotalBalance } from '../api/types'
 
 export type LedgerQueryErrorCode =
   | 'ACCOUNT_NOT_FOUND'
+  | 'INVALID_ACCOUNT_ID'
   | 'DATASET_NOT_READY'
   | 'VALUATION_RATE_UNAVAILABLE'
   | 'NETWORK_ERROR'
@@ -48,11 +49,13 @@ class LedgerQueryFailure extends Error {
 }
 
 export interface UseLedgerQueriesResult {
-  currency: CurrencyCode
+  totalCurrency: CurrencyCode
+  accountCurrency: CurrencyCode
   totalState: AsyncState<TotalBalance>
   accountState: AsyncState<AccountBalance>
   lookupAccount: (accountId: string) => void
-  changeCurrency: (currency: CurrencyCode) => void
+  changeTotalCurrency: (currency: CurrencyCode) => void
+  changeAccountCurrency: (currency: CurrencyCode) => void
   retryTotal: () => void
   retryAccount: () => void
 }
@@ -65,7 +68,8 @@ const initialCurrency: CurrencyCode = 'USD'
  * and vice versa.
  */
 export function useLedgerQueries(): UseLedgerQueriesResult {
-  const [currency, setCurrency] = useState<CurrencyCode>(initialCurrency)
+  const [totalCurrency, setTotalCurrency] = useState<CurrencyCode>(initialCurrency)
+  const [accountCurrency, setAccountCurrency] = useState<CurrencyCode>(initialCurrency)
   const [totalState, setTotalState] = useState<AsyncState<TotalBalance>>(idleState())
   const [accountState, setAccountState] = useState<AsyncState<AccountBalance>>(idleState())
   const totalController = useRef<AbortController | null>(null)
@@ -161,31 +165,38 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
   const lookupAccount = useCallback(
     (accountId: string) => {
       lastAccountId.current = accountId
-      loadAccount(accountId, currency)
+      loadAccount(accountId, accountCurrency)
     },
-    [currency, loadAccount],
+    [accountCurrency, loadAccount],
   )
 
-  const changeCurrency = useCallback(
+  const changeTotalCurrency = useCallback(
     (nextCurrency: CurrencyCode) => {
-      setCurrency(nextCurrency)
+      setTotalCurrency(nextCurrency)
       loadTotal(nextCurrency)
+    },
+    [loadTotal],
+  )
+
+  const changeAccountCurrency = useCallback(
+    (nextCurrency: CurrencyCode) => {
+      setAccountCurrency(nextCurrency)
       if (lastAccountId.current !== null) {
         loadAccount(lastAccountId.current, nextCurrency, true)
       }
     },
-    [loadAccount, loadTotal],
+    [loadAccount],
   )
 
   const retryTotal = useCallback(() => {
-    loadTotal(currency, true)
-  }, [currency, loadTotal])
+    loadTotal(totalCurrency, true)
+  }, [loadTotal, totalCurrency])
 
   const retryAccount = useCallback(() => {
     if (lastAccountId.current !== null) {
-      loadAccount(lastAccountId.current, currency, true, true)
+      loadAccount(lastAccountId.current, accountCurrency, true, true)
     }
-  }, [currency, loadAccount])
+  }, [accountCurrency, loadAccount])
 
   useEffect(() => {
     let active = true
@@ -207,11 +218,13 @@ export function useLedgerQueries(): UseLedgerQueriesResult {
   }, [loadTotal])
 
   return {
-    currency,
+    totalCurrency,
+    accountCurrency,
     totalState,
     accountState,
     lookupAccount,
-    changeCurrency,
+    changeTotalCurrency,
+    changeAccountCurrency,
     retryTotal,
     retryAccount,
   }
@@ -247,6 +260,8 @@ function getSafeMessage(code: string): string {
   switch (code) {
     case 'ACCOUNT_NOT_FOUND':
       return 'That account was not found in the current ledger.'
+    case 'INVALID_ACCOUNT_ID':
+      return 'Enter a valid account ID.'
     case 'DATASET_NOT_READY':
       return 'The ledger dataset is not available right now. Please try again later.'
     case 'VALUATION_RATE_UNAVAILABLE':
@@ -270,6 +285,7 @@ function getSafeMessage(code: string): string {
 function getKnownErrorCode(code: string): LedgerQueryErrorCode {
   switch (code) {
     case 'ACCOUNT_NOT_FOUND':
+    case 'INVALID_ACCOUNT_ID':
     case 'DATASET_NOT_READY':
     case 'VALUATION_RATE_UNAVAILABLE':
     case 'NETWORK_ERROR':

@@ -15,6 +15,10 @@ export interface TotalBalance {
   valuationDate: string | null
 }
 
+export interface SupportedCurrencies {
+  currencies: CurrencyCode[]
+}
+
 export interface ApiErrorDetail {
   code: string
   message: string

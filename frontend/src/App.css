@@ -147,7 +147,7 @@ button:disabled {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.92fr);
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 0.45fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -162,17 +162,24 @@ button:disabled {
 }
 
 .total-card {
-  min-height: 17rem;
+  min-height: 0;
   background: linear-gradient(145deg, #ffffff 0%, #f0f5ff 100%);
+  container-type: inline-size;
 }
 
-.account-card {
-  grid-column: 1;
+.total-summary {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 1rem;
+}
+
+.total-summary .card {
+  box-shadow: 0 0.75rem 2rem rgb(30 53 91 / 7%);
 }
 
 .lookup-card {
-  grid-column: 2;
-  grid-row: span 2;
+  grid-column: 1;
 }
 
 .card-heading-row {
@@ -186,16 +193,6 @@ button:disabled {
   margin: 0.45rem 0 0;
   font-size: clamp(1.25rem, 2vw, 1.55rem);
   letter-spacing: -0.015em;
-}
-
-.currency-chip {
-  padding: 0.35rem 0.55rem;
-  border-radius: 0.4rem;
-  color: var(--brand-dark);
-  background: var(--brand-soft);
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
 }
 
 .empty-message,
@@ -219,18 +216,31 @@ button:disabled {
 }
 
 .balance-result {
-  margin-top: 2.75rem;
+  margin-top: 2rem;
 }
 
 .money-value {
   overflow-wrap: anywhere;
+  max-width: 100%;
   margin: 0;
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-size: clamp(1.5rem, 10cqi, 3rem);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.05em;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.total-money-compact {
+  font-size: clamp(1.25rem, 7.5cqi, 2.15rem);
+}
+
+.total-money-long {
+  font-size: clamp(1.05rem, 5.5cqi, 1.55rem);
+  letter-spacing: -0.035em;
+  word-break: break-all;
 }
 
 .money-negative {
@@ -241,51 +251,29 @@ button:disabled {
   color: var(--muted-strong);
 }
 
-.balance-context {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.45rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.balance-context::before {
-  display: inline-block;
-  content: '';
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.balance-context-negative {
-  color: var(--error);
-}
-
-.balance-context-zero {
-  color: var(--muted-strong);
-}
-
-.valuation-date,
-.account-identity {
+.balance-currency {
   margin: 0.65rem 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.account-identity {
-  margin-bottom: 0.7rem;
   color: var(--muted-strong);
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .lookup-form {
   display: grid;
   gap: 1.25rem;
   margin-top: 1.75rem;
+}
+
+.lookup-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.45fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.currency-selector-compact {
+  min-width: 0;
 }
 
 .field-group {
@@ -315,23 +303,6 @@ select:focus-visible,
 button:focus-visible {
   outline: 3px solid #47c6a1;
   outline-offset: 3px;
-}
-
-input[aria-invalid='true'] {
-  border-color: var(--error);
-}
-
-.field-description,
-.validation-message {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.validation-message {
-  color: var(--error);
-  font-weight: 650;
 }
 
 button {
@@ -389,20 +360,93 @@ button:disabled {
   background: var(--brand-dark);
 }
 
-.lookup-card > .field-group {
-  margin-top: 1.25rem;
+.account-results {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.balance-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+}
+
+.balance-table caption {
+  margin-bottom: 0.8rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 750;
+  text-align: left;
+}
+
+.balance-table th,
+.balance-table td {
+  padding: 0.85rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.balance-table thead th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.balance-table tbody th {
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.balance-table td:nth-child(2) {
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table-secondary {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.77rem;
+  font-weight: 500;
+}
+
+.table-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--muted);
+}
+
+.table-state p {
+  margin: 0;
+  line-height: 1.5;
 }
 
 .feedback {
+  position: fixed;
+  z-index: 20;
+  top: 1rem;
+  right: 1rem;
+  width: min(28rem, calc(100vw - 2rem));
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  margin-top: 1.25rem;
   padding: 1rem 1.1rem;
   border: 1px solid var(--line);
   border-radius: 0.8rem;
   color: var(--muted-strong);
   background: var(--surface);
+  box-shadow: 0 1rem 2.5rem rgb(30 53 91 / 18%);
+  animation: flash-in 180ms ease-out;
+  overflow: hidden;
 }
 
 .feedback p {
@@ -430,11 +474,43 @@ button:disabled {
   background: var(--success-soft);
 }
 
+.feedback-timer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 0.2rem;
+  background: currentColor;
+  opacity: 0.55;
+  transform-origin: left;
+  animation: feedback-timer 3s linear forwards;
+}
+
 .site-footer {
   padding-block: 1.5rem 2rem;
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+@keyframes flash-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes feedback-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 @media (max-width: 48rem) {
@@ -447,10 +523,15 @@ button:disabled {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .account-card,
+  .total-summary,
   .lookup-card {
     grid-column: auto;
     grid-row: auto;
+    position: static;
+  }
+
+  .total-summary {
+    order: -1;
   }
 }
 
@@ -467,8 +548,8 @@ button:disabled {
     gap: 0.6rem;
   }
 
-  .currency-chip {
-    flex: 0 0 auto;
+  .lookup-controls {
+    grid-template-columns: 1fr;
   }
 
   .money-value {
@@ -478,6 +559,11 @@ button:disabled {
   .feedback {
     flex-direction: column;
     gap: 0.35rem;
+  }
+
+  .table-state {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

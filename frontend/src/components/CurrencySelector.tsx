@@ -10,12 +10,22 @@ export interface CurrencyOption {
 }
 
 export interface CurrencySelectorProps {
+  id: string
+  label: string
   value: CurrencyCode
   options: readonly CurrencyOption[]
   onChange: (value: CurrencyCode) => void
+  className?: string
 }
 
-function CurrencySelector({ value, options, onChange }: CurrencySelectorProps) {
+function CurrencySelector({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  className,
+}: CurrencySelectorProps) {
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const selectedOption = options.find(
       (option) => option.value === event.currentTarget.value,
@@ -27,13 +37,14 @@ function CurrencySelector({ value, options, onChange }: CurrencySelectorProps) {
   }
 
   return (
-    <div className="field-group">
-      <label htmlFor="currency">Display currency</label>
+    <div className={`field-group currency-selector${className ? ` ${className}` : ''}`}>
+      <label htmlFor={id}>{label}</label>
       <select
-        id="currency"
-        name="currency"
+        id={id}
+        name={id}
         value={value}
         onChange={handleChange}
+        disabled={options.length === 0}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -41,9 +52,6 @@ function CurrencySelector({ value, options, onChange }: CurrencySelectorProps) {
           </option>
         ))}
       </select>
-      <p className="field-description" id="currency-description">
-        Choose the currency used when the ledger returns a balance.
-      </p>
     </div>
   )
 }
