@@ -160,7 +160,10 @@ Expected configuration includes:
 - `DATABASE_URL`;
 - API host and port;
 - allowed frontend origin; and
-- optional ingestion concurrency and batch size.
+- ingestion concurrency, which must not exceed the database pool maximum.
+
+Phase 4 uses concurrent per-row upserts. Queue capacity is derived from ingestion
+concurrency, so there is no database batch-size or queue-size setting.
 
 For local development, backend settings are loaded from `backend/.env`. Public frontend configuration is loaded separately from `frontend/.env.local`; it must contain only browser-safe `VITE_*` values. Tracked templates live beside them as `backend/.env.example` and `frontend/.env.example`.
 

@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65_535)
     api_allowed_origins: str = "http://localhost:5173"
     ingest_concurrency: int = Field(default=10, ge=1, le=100)
-    ingest_batch_size: int = Field(default=250, ge=1, le=10_000)
 
     @property
     def allowed_origins(self) -> tuple[str, ...]:
@@ -33,9 +32,11 @@ class Settings(BaseSettings):
         )
 
     @model_validator(mode="after")
-    def validate_pool_bounds(self) -> "Settings":
+    def validate_resource_bounds(self) -> "Settings":
         if self.database_pool_min_size > self.database_pool_max_size:
             raise ValueError("DATABASE_POOL_MIN_SIZE cannot exceed DATABASE_POOL_MAX_SIZE")
+        if self.ingest_concurrency > self.database_pool_max_size:
+            raise ValueError("INGEST_CONCURRENCY cannot exceed DATABASE_POOL_MAX_SIZE")
         return self
 
 

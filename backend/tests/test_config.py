@@ -8,6 +8,30 @@ def test_rejects_inverted_pool_bounds() -> None:
         Settings(database_pool_min_size=11, database_pool_max_size=10)
 
 
+def test_accepts_ingestion_concurrency_below_pool_maximum() -> None:
+    settings = Settings(database_pool_max_size=10, ingest_concurrency=5)
+
+    assert settings.ingest_concurrency == 5
+
+
+def test_accepts_ingestion_concurrency_equal_to_pool_maximum() -> None:
+    settings = Settings(database_pool_max_size=10, ingest_concurrency=10)
+
+    assert settings.ingest_concurrency == 10
+
+
+def test_rejects_ingestion_concurrency_above_pool_maximum() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="INGEST_CONCURRENCY cannot exceed DATABASE_POOL_MAX_SIZE",
+    ):
+        Settings(database_pool_max_size=10, ingest_concurrency=11)
+
+
+def test_has_no_database_batch_size_setting() -> None:
+    assert "ingest_batch_size" not in Settings.model_fields
+
+
 def test_parses_comma_separated_origins() -> None:
     settings = Settings(api_allowed_origins="http://localhost:5173, http://localhost:4173")
 
