@@ -14,7 +14,7 @@ This folder contains the agreed architecture and contracts for the Ledger Balanc
 - FX at ingestion: each transaction uses its own `(currency, transaction date)` rate.
 - FX at read time: each requested currency uses its own latest persisted rate; there is no global valuation date shared by all currencies.
 - API money representation: decimal strings rounded once to two fractional digits using round-half-even.
-- API deployment may enable an optional API-key gate for trusted non-browser clients; the default local React flow uses no key.
+- The API has no authentication requirement for this assignment.
 - Product reads have bounded process-local rate limiting, structured errors, and `Cache-Control: no-store` financial responses.
 - Input policy: optimize for the assignment's happy path while failing clearly on values that cannot be parsed or matched.
 
@@ -25,8 +25,8 @@ This folder contains the agreed architecture and contracts for the Ledger Balanc
 3. [HTTP API contract](api-contract.md)
 4. [Deliverables and acceptance](delivery.md)
 
-Distributed authentication, gateway/global rate limiting, stable import
-snapshots, and production deployment remain out of scope.
+Gateway/global rate limiting, stable import snapshots, and production deployment
+remain out of scope.
 
 ## Authoritative formulas
 

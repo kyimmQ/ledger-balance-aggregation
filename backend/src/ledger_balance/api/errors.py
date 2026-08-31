@@ -16,11 +16,6 @@ class ApiRouteError(Exception):
         super().__init__(message)
 
 
-class UnauthorizedError(ApiRouteError):
-    def __init__(self) -> None:
-        super().__init__(401, "UNAUTHORIZED", "Authentication required")
-
-
 class RateLimitExceededError(ApiRouteError):
     def __init__(self, retry_after_seconds: int) -> None:
         self.retry_after_seconds = retry_after_seconds

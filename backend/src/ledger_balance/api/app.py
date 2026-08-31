@@ -70,7 +70,7 @@ def create_app(
         allow_origins=list(resolved_settings.allowed_origins),
         allow_credentials=False,
         allow_methods=["GET", "OPTIONS"],
-        allow_headers=["Accept", "Content-Type", "X-API-Key", "X-Request-ID"],
+        allow_headers=["Accept", "Content-Type", "X-Request-ID"],
     )
 
     @app.middleware("http")

@@ -11,13 +11,13 @@ Each read uses one SQL statement snapshot for its balance/total and rate. Reads
 remain intentionally live during replacement ingestion and can be empty,
 partial, or changing between requests. Responses are not cached. Structured
 errors include a request ID, security headers are applied, CORS is explicitly
-configured, and API-key protection is an optional deployment gate. The fixed
-window rate limiter is bounded but process-local.
+configured, and the API has no authentication requirement for this assignment.
+The fixed window rate limiter is bounded but process-local.
 
 ## Verification
 
-- API unit and contract tests cover conversion, errors, optional API keys,
-  request/rate-limit headers, and CORS.
+- API unit and contract tests cover conversion, errors, request/rate-limit
+  headers, and CORS.
 - `backend/tests/integration/test_api.py` is an opt-in test against the
   dedicated local Docker `ledger` database. It ingests the generated baseline,
   closes the ingestion pool, starts separate API lifecycles, checks independent
@@ -38,6 +38,5 @@ window rate limiter is bounded but process-local.
 
 The integration test's TestClient creates a separate application lifecycle,
 but not a separate operating-system process; a subprocess restart rehearsal is
-still a later delivery gate. Authentication lifecycle management, distributed
-limits, gateway/WAF/TLS, caching, and stable whole-import snapshots are out of
-scope.
+still a later delivery gate. Distributed limits, gateway/WAF/TLS, caching, and
+stable whole-import snapshots are out of scope.

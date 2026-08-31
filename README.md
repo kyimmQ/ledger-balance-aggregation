@@ -77,12 +77,10 @@ GET http://localhost:8000/api/accounts/100/balance
 GET http://localhost:8000/api/balances/total?currency=EUR
 ```
 
-API-key protection is disabled by default for the local React flow. For a
-trusted non-browser client, set `API_KEY` (a 32-character-or-longer secret)
-only in the local ignored `backend/.env`; never put it in a frontend env file
-or browser bundle. The application rate limiter is bounded and process-local,
-not a distributed security boundary. See the [API contract](docs/api-contract.md)
-for authentication, headers, errors, CORS, and live-read behavior.
+The API has no authentication requirement for this assignment. The application
+rate limiter is bounded and process-local, not a distributed security boundary.
+See the [API contract](docs/api-contract.md) for headers, errors, CORS, and
+live-read behavior.
 
 Start the Vite development server on `http://localhost:5173`:
 

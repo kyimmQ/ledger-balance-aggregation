@@ -121,8 +121,8 @@
 
 ### Phase 5 API verification
 
-- [x] Optional API-key and process-local rate-limit boundaries are covered by
-  API contract tests.
+- [x] The API has no authentication requirement, and process-local rate-limit
+  behavior is covered by API contract tests.
 - [x] Real PostgreSQL API integration verification is available as an opt-in
   destructive test against the dedicated local Docker `ledger` database.
 - [ ] React, a true separate-process restart rehearsal, and final clean-checkout
@@ -135,7 +135,7 @@
 - Rejected-row quarantine.
 - Raw transaction audit history.
 - Account list/search/pagination.
-- Authentication and authorization.
+- Authentication and authorization are not required for this assignment.
 - Live FX providers.
 - Distributed queues, caches, or microservices.
 - Production deployment and observability platforms.

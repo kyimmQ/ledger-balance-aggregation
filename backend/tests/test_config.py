@@ -1,6 +1,6 @@
 import pytest
 from ledger_balance.config import Settings
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 
 def test_rejects_inverted_pool_bounds() -> None:
@@ -57,16 +57,3 @@ def test_rejects_invalid_api_query_timeout() -> None:
 def test_rejects_non_positive_rate_limit_settings(field: str) -> None:
     with pytest.raises(ValidationError):
         Settings.model_validate({field: 0})
-
-
-def test_api_key_is_optional_and_secret() -> None:
-    settings = Settings(api_key=SecretStr("a" * 32))
-
-    assert settings.api_key is not None
-    assert settings.api_key.get_secret_value() == "a" * 32
-    assert "a" * 32 not in repr(settings)
-
-
-def test_rejects_short_api_key() -> None:
-    with pytest.raises(ValidationError):
-        Settings(api_key=SecretStr("too-short"))

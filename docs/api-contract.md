@@ -84,13 +84,10 @@ Example foreign-currency response:
 }
 ```
 
-## Authentication and headers
+## Headers and access
 
-API-key protection is optional. When `API_KEY` is unset, product requests are
-allowed. When it is set, clients must send the exact value in the `X-API-Key`
-header; query-string keys are not accepted. Health endpoints are public and
-exempt. A React bundle cannot keep a shared API key secret, so do not put
-`API_KEY` in frontend environment files or browser code.
+The API has no authentication requirement for this assignment. All endpoints
+remain subject to their documented validation and operational behavior.
 
 Every response includes `X-Request-ID`. A valid caller-supplied ID is echoed;
 otherwise the server generates one. Requests that reach the product limiter
@@ -100,8 +97,8 @@ The limiter is local to one application process and is not a distributed/global
 limit.
 
 The API enables `GET` and `OPTIONS` for the configured origins (by default,
-`http://localhost:5173`) and allows the `Accept`, `Content-Type`, `X-API-Key`,
-and `X-Request-ID` request headers. Responses include
+`http://localhost:5173`) and allows the `Accept`, `Content-Type`, and
+`X-Request-ID` request headers. Responses include
 `X-Content-Type-Options: nosniff`; API and health responses also include
 `Cache-Control: no-store`.
 
@@ -128,7 +125,6 @@ SQL, connection strings, or internal exception details.
 | `400` | `INVALID_ACCOUNT_ID` | Account ID is not integer text from 100 through 999 |
 | `400` | `INVALID_CURRENCY` | Currency is not 3–8 ASCII letters |
 | `400` | `UNSUPPORTED_CURRENCY` | Currency is absent from the live `currencies` table |
-| `401` | `UNAUTHORIZED` | API key is configured and missing or incorrect |
 | `404` | `ACCOUNT_NOT_FOUND` | Valid account ID has no current balance row |
 | `404` | `NOT_FOUND` | Route does not exist |
 | `405` | `METHOD_NOT_ALLOWED` | Route exists but does not accept this method |
@@ -141,4 +137,4 @@ SQL, connection strings, or internal exception details.
 
 A negative or zero balance is a successful `200` result. `/health/live` and
 `/health/ready` are operational endpoints; they are public and exempt from the
-API-key and product rate-limit dependencies.
+product rate-limit dependency.

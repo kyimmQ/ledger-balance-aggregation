@@ -19,8 +19,6 @@ def error_response(request: Request, error: ApiRouteError) -> JSONResponse:
         error=ErrorDetail(code=error.code, message=error.public_message, requestId=request_id)
     )
     headers = {"X-Request-ID": request_id, **get_rate_limit_headers(request)}
-    if error.status_code == status.HTTP_401_UNAUTHORIZED:
-        headers["WWW-Authenticate"] = "ApiKey"
     return JSONResponse(
         status_code=error.status_code,
         content=body.model_dump(by_alias=True),
