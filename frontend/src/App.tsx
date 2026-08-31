@@ -2,13 +2,12 @@ import { useState, type FormEvent } from 'react'
 
 import AccountBalanceCard from './components/AccountBalanceCard'
 import AccountLookupForm from './components/AccountLookupForm'
-import CurrencySelector, {
-  type CurrencyCode,
-} from './components/CurrencySelector'
+import CurrencySelector from './components/CurrencySelector'
 import FeedbackMessage from './components/FeedbackMessage'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import TotalBalanceCard from './components/TotalBalanceCard'
+import { getLedgerQueryError, useLedgerQueries } from './hooks/useLedgerQueries'
 import './App.css'
 
 const supportedCurrencies = [
@@ -18,12 +17,42 @@ const supportedCurrencies = [
 ]
 
 function App() {
-  const [currency, setCurrency] = useState<CurrencyCode>('USD')
+  const {
+    currency,
+    totalState,
+    accountState,
+    lookupAccount,
+    changeCurrency,
+  } = useLedgerQueries()
   const [accountId, setAccountId] = useState('')
+  const [validationMessage, setValidationMessage] = useState<string>()
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (!/^[0-9]+$/.test(accountId) || !isValidAccountId(accountId)) {
+      setValidationMessage('Enter an account ID between 100 and 999.')
+      return
+    }
+
+    setValidationMessage(undefined)
+    lookupAccount(accountId)
   }
+
+  const handleAccountIdChange = (nextAccountId: string) => {
+    setAccountId(nextAccountId)
+    if (validationMessage) {
+      setValidationMessage(undefined)
+    }
+  }
+
+  const totalError = totalState.status === 'error'
+    ? getLedgerQueryError(totalState.error)
+    : undefined
+  const accountError = accountState.status === 'error'
+    ? getLedgerQueryError(accountState.error)
+    : undefined
+  const accountPending = accountState.status === 'loading'
 
   return (
     <div className="app-shell">
@@ -39,7 +68,15 @@ function App() {
         </div>
 
         <div className="dashboard-grid">
-          <TotalBalanceCard currency={currency} state="idle" />
+          <TotalBalanceCard
+            currency={currency}
+            state={getBalanceDisplayState(totalState)}
+            total={totalState.status === 'success' ? totalState.data.total : undefined}
+            valuationDate={
+              totalState.status === 'success' ? totalState.data.valuationDate : undefined
+            }
+            message={totalError?.message}
+          />
 
           <section className="card lookup-card" aria-labelledby="lookup-heading">
             <div className="card-heading-row">
@@ -50,28 +87,96 @@ function App() {
             </div>
             <AccountLookupForm
               accountId={accountId}
-              onAccountIdChange={setAccountId}
+              onAccountIdChange={handleAccountIdChange}
               onSubmit={handleSubmit}
-              disabled={false}
+              disabled={accountPending}
+              pending={accountPending}
+              validationMessage={validationMessage}
             />
             <CurrencySelector
               value={currency}
               options={supportedCurrencies}
-              onChange={setCurrency}
+              onChange={changeCurrency}
             />
           </section>
 
-          <AccountBalanceCard currency={currency} state="idle" />
+          <AccountBalanceCard
+            currency={currency}
+            state={getBalanceDisplayState(accountState)}
+            accountId={accountState.status === 'success' ? accountState.data.accountId : undefined}
+            accountName={accountState.status === 'success' ? accountState.data.name : undefined}
+            balance={accountState.status === 'success' ? accountState.data.balance : undefined}
+            valuationDate={
+              accountState.status === 'success' ? accountState.data.valuationDate : undefined
+            }
+            message={accountError?.message}
+          />
         </div>
 
         <FeedbackMessage
-          tone="info"
-          message="No request has been made yet. Account and total cards will fill with ledger data after the lookup workflow is connected."
+          tone={accountError || totalError ? 'error' : totalState.status === 'success' ? 'success' : 'info'}
+          message={getFeedbackMessage({
+            accountError,
+            totalError,
+            accountState,
+            totalState,
+          })}
         />
       </main>
       <Footer />
     </div>
   )
+}
+
+function isValidAccountId(accountId: string): boolean {
+  const value = Number(accountId)
+  return Number.isInteger(value) && value >= 100 && value <= 999
+}
+
+function getBalanceDisplayState(
+  state: { status: 'idle' | 'loading' | 'success' } | { status: 'error'; error: Error },
+): 'idle' | 'loading' | 'success' | 'not-found' | 'empty' | 'error' {
+  if (state.status !== 'error') {
+    return state.status
+  }
+
+  const code = getLedgerQueryError(state.error).code
+  if (code === 'ACCOUNT_NOT_FOUND') {
+    return 'not-found'
+  }
+  if (code === 'DATASET_NOT_READY') {
+    return 'empty'
+  }
+  return 'error'
+}
+
+function getFeedbackMessage({
+  accountError,
+  totalError,
+  accountState,
+  totalState,
+}: {
+  accountError?: { message: string }
+  totalError?: { message: string }
+  accountState: { status: string }
+  totalState: { status: string }
+}): string {
+  if (accountError) {
+    return accountError.message
+  }
+  if (totalError) {
+    return totalError.message
+  }
+  if (accountState.status === 'loading' || totalState.status === 'loading') {
+    return 'Loading the latest ledger balances…'
+  }
+  if (accountState.status === 'success') {
+    return 'Account balance loaded from the ledger.'
+  }
+  if (totalState.status === 'success') {
+    return 'Total balance loaded from the ledger. Look up an account for its details.'
+  }
+  return 'Balances will appear here after a ledger request.'
 }
 
 export default App

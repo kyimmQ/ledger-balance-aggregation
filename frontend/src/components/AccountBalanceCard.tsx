@@ -8,6 +8,7 @@ export interface AccountBalanceCardProps {
   balance?: string
   valuationDate?: string | null
   state: BalanceDisplayState
+  message?: string
 }
 
 function AccountBalanceCard({
@@ -17,6 +18,7 @@ function AccountBalanceCard({
   balance,
   valuationDate,
   state,
+  message,
 }: AccountBalanceCardProps) {
   return (
     <section className={`card account-card state-${state}`} aria-labelledby="account-balance-heading">
@@ -46,20 +48,28 @@ function AccountBalanceCard({
             </p>
           )}
           <p className="money-value">{balance}</p>
-          <p className="valuation-date">
-            {valuationDate
-              ? `Valued ${valuationDate}`
-              : currency === 'USD'
-                ? 'Stored USD'
-                : 'Valuation date unavailable'}
-          </p>
+          {(valuationDate || currency === 'USD') && (
+            <p className="valuation-date">
+              {valuationDate ? `Valued ${valuationDate}` : 'Stored USD'}
+            </p>
+          )}
         </div>
       )}
-      {state === 'error' && (
-        <p className="empty-message">An account balance will appear after a successful lookup.</p>
+      {(state === 'not-found' || state === 'empty' || state === 'error') && (
+        <p className="empty-message">{message ?? getDefaultMessage(state)}</p>
       )}
     </section>
   )
+}
+
+function getDefaultMessage(state: Exclude<BalanceDisplayState, 'idle' | 'loading' | 'success'>): string {
+  if (state === 'not-found') {
+    return 'That account was not found in the current ledger.'
+  }
+  if (state === 'empty') {
+    return 'The ledger dataset is not available right now.'
+  }
+  return 'An account balance is not available yet.'
 }
 
 export default AccountBalanceCard

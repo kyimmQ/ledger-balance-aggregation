@@ -7,10 +7,8 @@ export interface FeedbackMessageProps {
 
 function FeedbackMessage({ tone, message }: FeedbackMessageProps) {
   const liveProps = tone === 'error'
-    ? { role: 'alert' as const }
-    : tone === 'success'
-      ? { role: 'status' as const, 'aria-live': 'polite' as const }
-      : {}
+    ? { role: 'alert' as const, 'aria-live': 'assertive' as const, 'aria-atomic': true }
+    : { role: 'status' as const, 'aria-live': 'polite' as const, 'aria-atomic': true }
 
   return (
     <div className={`feedback feedback-${tone}`} {...liveProps}>

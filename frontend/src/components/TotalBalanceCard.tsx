@@ -1,12 +1,19 @@
 import type { CurrencyCode } from './CurrencySelector'
 
-export type BalanceDisplayState = 'idle' | 'loading' | 'success' | 'error'
+export type BalanceDisplayState =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'not-found'
+  | 'empty'
+  | 'error'
 
 export interface TotalBalanceCardProps {
   currency: CurrencyCode
   total?: string
   valuationDate?: string | null
   state: BalanceDisplayState
+  message?: string
 }
 
 function TotalBalanceCard({
@@ -14,6 +21,7 @@ function TotalBalanceCard({
   total,
   valuationDate,
   state,
+  message,
 }: TotalBalanceCardProps) {
   return (
     <section className={`card total-card state-${state}`} aria-labelledby="total-balance-heading">
@@ -37,14 +45,25 @@ function TotalBalanceCard({
       {state === 'success' && total !== undefined && (
         <div className="balance-result">
           <p className="money-value">{total}</p>
-          {valuationDate && <p className="valuation-date">Valued {valuationDate}</p>}
+          {(valuationDate || currency === 'USD') && (
+            <p className="valuation-date">
+              {valuationDate ? `Valued ${valuationDate}` : 'Stored USD'}
+            </p>
+          )}
         </div>
       )}
-      {state === 'error' && (
-        <p className="empty-message">The total balance is not available yet.</p>
+      {(state === 'not-found' || state === 'empty' || state === 'error') && (
+        <p className="empty-message">{message ?? getDefaultMessage(state)}</p>
       )}
     </section>
   )
+}
+
+function getDefaultMessage(state: Exclude<BalanceDisplayState, 'idle' | 'loading' | 'success'>): string {
+  if (state === 'empty') {
+    return 'The ledger dataset is not available right now.'
+  }
+  return 'The total balance is not available yet.'
 }
 
 export default TotalBalanceCard

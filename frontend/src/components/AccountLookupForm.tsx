@@ -5,6 +5,7 @@ export interface AccountLookupFormProps {
   onAccountIdChange: (accountId: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   disabled: boolean
+  pending?: boolean
   validationMessage?: string
 }
 
@@ -13,6 +14,7 @@ function AccountLookupForm({
   onAccountIdChange,
   onSubmit,
   disabled,
+  pending = false,
   validationMessage,
 }: AccountLookupFormProps) {
   const describedBy = validationMessage
@@ -20,7 +22,7 @@ function AccountLookupForm({
     : 'account-id-hint'
 
   return (
-    <form className="lookup-form" onSubmit={onSubmit} noValidate>
+    <form className="lookup-form" onSubmit={onSubmit} noValidate aria-busy={pending}>
       <div className="field-group">
         <label htmlFor="account-id">Account ID</label>
         <input
