@@ -6,16 +6,10 @@ from pathlib import Path
 from ledger_balance.db.pool import Database
 from ledger_balance.domain.arithmetic import transaction_usd_delta
 from ledger_balance.domain.models import RateBook, Transaction
+from ledger_balance.ingestion.errors import WorkItemPersistenceError
+from ledger_balance.ingestion.models import IngestionResult
 from ledger_balance.ingestion.repository import LedgerRepository
 from ledger_balance.input.csv_files import iter_transactions, load_rates
-
-
-@dataclass(frozen=True, slots=True)
-class IngestionResult:
-    transaction_count: int
-    account_count: int
-    rate_count: int
-    total_usd: Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,12 +26,6 @@ class _StopSignal:
 
 _STOP = _StopSignal()
 type QueueItem = BalanceWorkItem | _StopSignal
-
-
-class WorkItemPersistenceError(RuntimeError):
-    def __init__(self, sequence: int, cause: Exception) -> None:
-        self.sequence = sequence
-        super().__init__(f"transaction {sequence} persistence failed: {cause}")
 
 
 async def _produce(

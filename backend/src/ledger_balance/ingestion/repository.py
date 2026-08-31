@@ -2,9 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from ledger_balance.db.pool import Database
-from ledger_balance.domain.models import CurrencyCode, RateBook, Transaction
-
-USD = CurrencyCode("USD")
+from ledger_balance.domain.currencies import USD
+from ledger_balance.domain.models import RateBook, Transaction
 
 RESET_SQL = "TRUNCATE TABLE account_balances, exchange_rates, currencies"
 CURRENCY_SQL = "INSERT INTO currencies (code) VALUES ($1)"

@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from ledger_balance.domain.arithmetic import ensure_numeric_38_18
+from ledger_balance.domain.currencies import USD
 from ledger_balance.domain.models import (
     AccountId,
     CurrencyCode,
@@ -17,7 +18,6 @@ from ledger_balance.input.errors import InputFileError
 
 RATE_HEADERS = ("date", "currency", "rate")
 TRANSACTION_HEADERS = ("id", "name", "plus", "minus", "currency", "date")
-USD = CurrencyCode("USD")
 
 
 def load_rates(path: Path) -> RateBook:
