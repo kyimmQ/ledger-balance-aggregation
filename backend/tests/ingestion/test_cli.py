@@ -96,11 +96,36 @@ def test_main_prints_exact_success_result(
         return IngestionResult(5, 4, 5, Decimal("96.407375"))
 
     monkeypatch.setattr(cli, "run", succeed)
+    monkeypatch.setattr(
+        "ledger_balance.ingestion.cli.time.perf_counter", iter([10.0, 12.5]).__next__
+    )
 
     cli.main(["--transactions", "transactions.csv", "--rates", "rates.csv"])
 
     captured = capsys.readouterr()
-    assert captured.out == ("ingested transactions=5 accounts=4 rates=5 total_usd=96.407375\n")
+    assert captured.out == (
+        "ingested transactions=5 accounts=4 rates=5 total_usd=96.407375 "
+        "elapsed_seconds=2.500000 rows_per_second=2.000000\n"
+    )
+    assert captured.err == ""
+
+
+def test_main_reports_finite_throughput_for_zero_elapsed_time(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    async def succeed(_transactions: Path, _rates: Path) -> IngestionResult:
+        return IngestionResult(5, 4, 5, Decimal("96.407375"))
+
+    monkeypatch.setattr(cli, "run", succeed)
+    monkeypatch.setattr(
+        "ledger_balance.ingestion.cli.time.perf_counter", iter([10.0, 10.0]).__next__
+    )
+
+    cli.main(["--transactions", "transactions.csv", "--rates", "rates.csv"])
+
+    captured = capsys.readouterr()
+    assert "elapsed_seconds=0.000000" in captured.out
+    assert "rows_per_second=5000000000.000000" in captured.out
     assert captured.err == ""
 
 

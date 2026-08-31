@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -35,6 +36,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     arguments = parser.parse_args(argv)
 
     try:
+        started = time.perf_counter()
         result = asyncio.run(run(arguments.transactions, arguments.rates))
     except (
         InputFileError,
@@ -46,10 +48,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from None
 
+    elapsed_seconds = max(time.perf_counter() - started, 1e-9)
+    rows_per_second = result.transaction_count / elapsed_seconds
     print(
         f"ingested transactions={result.transaction_count} "
         f"accounts={result.account_count} rates={result.rate_count} "
-        f"total_usd={format(result.total_usd, 'f')}"
+        f"total_usd={format(result.total_usd, 'f')} "
+        f"elapsed_seconds={elapsed_seconds:.6f} "
+        f"rows_per_second={rows_per_second:.6f}"
     )
 
 
