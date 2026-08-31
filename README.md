@@ -4,7 +4,7 @@ A Python/FastAPI, PostgreSQL, and React implementation of the ledger-balance agg
 
 ## Status
 
-Phase 1 establishes the backend and frontend foundations, PostgreSQL connectivity, health checks, database migrations, and repository-wide quality tooling. Ledger calculations, CSV ingestion, balance endpoints, and the product interface begin in Phase 2 and later phases.
+The backend foundation, exact ledger arithmetic, CSV parsing, PostgreSQL schema, and sequential replacement ingestion command are implemented. Concurrent ingestion, balance endpoints, and the product interface follow in later phases.
 
 ## Prerequisites
 
@@ -31,11 +31,20 @@ make migrate
 
 Run each process in its own terminal.
 
-Check PostgreSQL connectivity and exit:
+Apply the schema migration, then ingest the generated baseline files:
 
 ```bash
+make migrate
 make ingest
 ```
+
+To ingest different files:
+
+```bash
+make ingest TRANSACTIONS=/path/to/transactions.csv RATES=/path/to/exchange_rates.csv
+```
+
+Ingestion validates the complete rate file before changing the database, then clears and replaces the live ledger tables. Transaction rows are streamed and committed one at a time. If a transaction or database operation fails after the reset, the live tables may contain partial data until the command is rerun. The command deliberately performs sequential writes; concurrent performance is added in Phase 4.
 
 Start the FastAPI server on `http://localhost:8000`:
 

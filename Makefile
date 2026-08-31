@@ -1,5 +1,7 @@
 UV := uv
 UV_PROJECT := --project backend
+TRANSACTIONS ?= backend/fixtures/generated/baseline/transactions.csv
+RATES ?= backend/fixtures/generated/baseline/exchange_rates.csv
 
 .PHONY: install install-backend install-frontend lock db-up db-down migrate ingest api frontend fixtures fixtures-catalog test test-backend test-frontend lint format typecheck build check
 
@@ -15,7 +17,7 @@ lock:
 	$(UV) lock $(UV_PROJECT)
 
 ingest:
-	$(UV) run $(UV_PROJECT) --locked ledger-ingest
+	$(UV) run $(UV_PROJECT) --locked ledger-ingest --transactions $(TRANSACTIONS) --rates $(RATES)
 
 api:
 	$(UV) run $(UV_PROJECT) --locked ledger-serve

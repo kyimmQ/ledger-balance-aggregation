@@ -44,9 +44,7 @@ async def test_rate_book_reset_and_foreign_key_behavior(
 ) -> None:
     rate = Decimal("1.083200000000000000")
     await repository.insert_rate_book(
-        RateBook.from_rates(
-            [ExchangeRate(CurrencyCode("EUR"), date(2026, 6, 15), rate)]
-        )
+        RateBook.from_rates([ExchangeRate(CurrencyCode("EUR"), date(2026, 6, 15), rate)])
     )
 
     currencies = await db_connection.fetch("SELECT code FROM currencies ORDER BY code")
@@ -84,12 +82,8 @@ async def test_repeated_deltas_stats_and_second_reset(
     await repository.insert_rate_book(
         RateBook.from_rates(
             [
-                ExchangeRate(
-                    CurrencyCode("USD"), date(2026, 6, 15), Decimal("1")
-                ),
-                ExchangeRate(
-                    CurrencyCode("EUR"), date(2026, 6, 15), Decimal("1.0832")
-                ),
+                ExchangeRate(CurrencyCode("USD"), date(2026, 6, 15), Decimal("1")),
+                ExchangeRate(CurrencyCode("EUR"), date(2026, 6, 15), Decimal("1.0832")),
             ]
         )
     )
